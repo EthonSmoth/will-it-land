@@ -1,5 +1,6 @@
-import javax.inject.Inject;
+
 package com.ethan.combatcalc;
+import javax.inject.Inject;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -20,9 +21,9 @@ import java.util.logging.Logger;
  */
 @Singleton
 public class NpcStatsRepository
-  @Inject
-  private Gson gson;
 {
+    @Inject
+    private Gson gson;
     private static final Logger logger = Logger.getLogger(NpcStatsRepository.class.getName());
     private static final String NPC_STATS_FILE = "/npc_stats.json";
 
@@ -35,43 +36,36 @@ public class NpcStatsRepository
 
     private void loadNpcStats()
     {
-        try
-        {
+        try {
             // Try to load from jar resources first
-            try (InputStreamReader reader = new InputStreamReader(getClass().getResourceAsStream(NPC_STATS_FILE)))
-            {
-                Gson gson = new Gson();
-                Type mapType = new TypeToken<Map<String, NpcCombatProfile>>()
-                        try {
-                            // Try to load from jar resources first
-                            try (InputStreamReader reader = new InputStreamReader(getClass().getResourceAsStream(NPC_STATS_FILE))) {
-                                Type mapType = new TypeToken<Map<String, NpcCombatProfile>>() {}.getType();
-                                npcStats = gson.fromJson(reader, mapType);
-                                if (npcStats == null) {
-                                    npcStats = new HashMap<>();
-                                }
-                                logger.info("Loaded " + npcStats.size() + " NPC combat profiles from jar");
-                                return;
-                            } catch (Exception e) {
-                                logger.warning("Failed to load NPC stats from jar: " + e.getMessage());
-                            }
-                            // Fallback to user directory
-                            File configDir = RuneLite.RUNELITE_DIR;
-                            File statsFile = new File(configDir, "npc_stats.json");
-                            if (!statsFile.exists()) {
-                                logger.warning("NPC stats file not found: " + statsFile.getAbsolutePath());
-                                return;
-                            }
-                            Type mapType = new TypeToken<Map<String, NpcCombatProfile>>() {}.getType();
-                            npcStats = gson.fromJson(new FileReader(statsFile), mapType);
-                            if (npcStats == null) {
-                                npcStats = new HashMap<>();
-                            }
-                            logger.info("Loaded " + npcStats.size() + " NPC combat profiles from user directory");
-                        } catch (IOException e) {
-                            logger.warning("Failed to load NPC stats: " + e.getMessage());
-                            npcStats = new HashMap<>();
-                        }
+            try (InputStreamReader reader = new InputStreamReader(getClass().getResourceAsStream(NPC_STATS_FILE))) {
+                Type mapType = new TypeToken<Map<String, NpcCombatProfile>>() {}.getType();
+                npcStats = gson.fromJson(reader, mapType);
+                if (npcStats == null) {
+                    npcStats = new HashMap<>();
+                }
+                logger.info("Loaded " + npcStats.size() + " NPC combat profiles from jar");
+                return;
+            } catch (Exception e) {
+                logger.warning("Failed to load NPC stats from jar: " + e.getMessage());
+            }
+            // Fallback to user directory
+            File configDir = RuneLite.RUNELITE_DIR;
+            File statsFile = new File(configDir, "npc_stats.json");
+            if (!statsFile.exists()) {
+                logger.warning("NPC stats file not found: " + statsFile.getAbsolutePath());
+                return;
+            }
+            Type mapType = new TypeToken<Map<String, NpcCombatProfile>>() {}.getType();
+            npcStats = gson.fromJson(new FileReader(statsFile), mapType);
+            if (npcStats == null) {
+                npcStats = new HashMap<>();
+            }
+            logger.info("Loaded " + npcStats.size() + " NPC combat profiles from user directory");
+        } catch (IOException e) {
+            logger.warning("Failed to load NPC stats: " + e.getMessage());
+            npcStats = new HashMap<>();
+        }
     }
 
     /**
