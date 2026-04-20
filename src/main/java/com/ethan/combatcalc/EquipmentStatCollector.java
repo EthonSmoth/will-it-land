@@ -50,7 +50,7 @@ public class EquipmentStatCollector
                 continue;
             }
 
-            ItemStats itemStats = itemManager.getItemStats(item.getId(), false);
+            ItemStats itemStats = itemManager.getItemStats(item.getId());
             if (itemStats == null)
             {
                 continue;
