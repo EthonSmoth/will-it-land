@@ -163,7 +163,7 @@ Features: All ON
 ```
 **Result**: Shows calculation breakdown with all info
 
-### 🎯 Competitive (PvP)
+### 🎯 Minimal (Low Clutter)
 ```
 Display: Hit Chance + Attack Style only
 Debug: OFF

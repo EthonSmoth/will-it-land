@@ -2,7 +2,7 @@
 
 A RuneLite plugin for Old School RuneScape that calculates real-time combat hit chance against your current target.
 
-It helps you understand your actual accuracy in PvM and PvP by displaying a live percentage based on OSRS combat formulas, gear, prayers, and modifiers.
+It helps you understand your actual accuracy in PvM by displaying a live percentage based on OSRS combat formulas, gear, prayers, and modifiers.
 
 ---
 

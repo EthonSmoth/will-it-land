@@ -16,8 +16,8 @@ import javax.inject.Inject;
 
 @PluginDescriptor(
         name = "will-it-land",
-        description = "Combat accuracy calculator - shows hit chance % vs your target",
-        tags = {"combat", "accuracy", "overlay", "pvm", "pvp"}
+        description = "Combat accuracy calculator - shows hit chance % vs your target NPC",
+        tags = {"combat", "accuracy", "overlay", "pvm"}
 )
 public class WillItLandPlugin extends Plugin
 {
