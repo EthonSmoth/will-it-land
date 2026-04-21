@@ -22,15 +22,16 @@ import java.util.logging.Logger;
 @Singleton
 public class NpcStatsRepository
 {
-    @Inject
-    private Gson gson;
+    private final Gson gson;
     private static final Logger logger = Logger.getLogger(NpcStatsRepository.class.getName());
     private static final String NPC_STATS_FILE = "/npc_stats.json";
 
     private Map<String, NpcCombatProfile> npcStats = new HashMap<>();
 
-    public NpcStatsRepository()
+    @Inject
+    public NpcStatsRepository(Gson gson)
     {
+        this.gson = gson;
         loadNpcStats();
     }
 
