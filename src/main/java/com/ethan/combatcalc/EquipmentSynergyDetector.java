@@ -10,8 +10,29 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 
 /**
- * Detects equipment set effects and special synergies.
- * Includes: Void Knight, Obsidian set, GWD sets, etc.
+ * Detects equipment set effects that grant accuracy or damage multipliers.
+ *
+ * ### Sets currently detected
+ *
+ *   Void Knight (all combat types)
+ *     Requires: correct helm for the combat type (melee 11665 / ranger 11664 / mage 11663)
+ *     + Void knight top (8839) or Elite void top (13072)
+ *     + Void knight robe (8840) or Elite void robe (13073)
+ *     + Void knight gloves (8842)
+ *     Bonus: +10% accuracy, +10% damage (Elite Void gives +12.5% damage for ranged/magic).
+ *     Note: this class applies a uniform +10% for both standard and Elite Void —
+ *           the damage difference is an area for future improvement.
+ *
+ *   Obsidian armour (melee only)
+ *     Requires: Obsidian helm (21298) + platebody (21301) + platelegs (21304)
+ *               + any obsidian weapon (Toktz-xil-ul 6522, Toktz-xil-ak 6523,
+ *                 Toktz-xil-ek 6524, Toktz-mej-tal 6526, Toktz-ket-em 6528).
+ *     Bonus: +10% accuracy and +10% damage.
+ *
+ * ### Usage note
+ *   This detector is instantiated and available via Guice injection.  The set-effect
+ *   multipliers it returns are intended to be applied by the caller (e.g. in the
+ *   combat calculation pipeline) — they are not automatically applied here.
  */
 @Singleton
 public class EquipmentSynergyDetector
@@ -25,7 +46,9 @@ public class EquipmentSynergyDetector
     }
 
     /**
-     * Gets accuracy multiplier from equipment set effects.
+     * Returns the accuracy multiplier granted by any active equipment set bonus.
+     * Currently checks Void Knight and Obsidian sets.
+     * Returns 1.0 (no bonus) if no set effect is active.
      */
     public double getSetEffectAccuracyMultiplier(CombatType combatType)
     {

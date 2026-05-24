@@ -11,8 +11,23 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 
 /**
- * Resolves combat type (MELEE/RANGED/MAGIC) and attack subtype (STAB/SLASH/CRUSH/RANGED/MAGIC).
- * Based on equipped weapon and active attack style.
+ * Determines what combat style the player is currently using.
+ *
+ * ### CombatType (MELEE / RANGED / MAGIC)
+ *   Resolved by inspecting the equipped weapon and VarPlayer values:
+ *     - If a selected spell is active (varp 108 > 0) → MAGIC.
+ *     - If the equipped weapon is in the hardcoded ranged-weapon list → RANGED.
+ *     - Otherwise → MELEE.
+ *
+ *   Note: powered staves (Trident, Sanguinesti, etc.) are listed in isStaff() and
+ *   treated as melee for the purpose of CombatType detection; magic is only returned
+ *   when an explicit spell is selected via VarPlayer 108.
+ *
+ * ### AttackSubType (STAB / SLASH / CRUSH / RANGED / MAGIC)
+ *   For MELEE, the active attack style VarPlayer is mapped to a sub-type.
+ *   Staves always use CRUSH regardless of the style selector.
+ *   Unarmed combat (no weapon) defaults to CRUSH.
+ *   For RANGED and MAGIC the sub-type is fixed to RANGED or MAGIC respectively.
  */
 @Singleton
 public class AttackStyleResolver
@@ -42,7 +57,15 @@ public class AttackStyleResolver
     }
 
     /**
-     * Determines combat type based on equipped weapon and active style.
+     * Determines the high-level combat type (MELEE / RANGED / MAGIC).
+     *
+     * Detection order:
+     *   1. If VarPlayer 108 (selected spell) is non-zero → MAGIC.
+     *      This covers all standard and ancient spellbook spells.
+     *   2. If the equipped weapon is in the ranged-weapon list → RANGED.
+     *      Checked regardless of attack style, because some ranged weapons
+     *      have a style-3 slot that could be confused with melee controlled stance.
+     *   3. Default → MELEE.
      */
     public CombatType resolveCombatType(Client client)
     {
@@ -82,8 +105,11 @@ public class AttackStyleResolver
     }
 
     /**
-     * Checks if a weapon ID is a ranged weapon.
-     * This is a basic implementation - you may need to expand based on your needs.
+     * Hardcoded list of ranged weapon item IDs.
+     *
+     * Used by resolveCombatType() to distinguish ranged weapons from melee weapons.
+     * Covers bows, crossbows, the toxic blowpipe, and chinchompas.
+     * This list is not exhaustive — newer or uncommon ranged weapons may need to be added.
      */
     private boolean isRangedWeapon(int weaponId)
     {
@@ -118,7 +144,12 @@ public class AttackStyleResolver
     }
 
     /**
-     * Checks if a weapon ID is a staff (uses crush attack style).
+     * Hardcoded list of staff/wand item IDs.
+     *
+     * Staves use the CRUSH attack sub-type in the melee accuracy formula
+     * (the weapon uses the crush attack bonus column in the equipment table).
+     * This list covers common staves, battlestaves, and magic wands/staffs.
+     * It is also used to prevent staves from being misidentified as ranged weapons.
      */
     private boolean isStaff(int weaponId)
     {
@@ -166,6 +197,18 @@ public class AttackStyleResolver
         }
     }
 
+    /**
+     * Maps the active VarPlayer attack-style index to an AttackSubType for melee.
+     *
+     * VarPlayer.ATTACK_STYLE values for a typical weapon:
+     *   0 → Stab (Accurate)
+     *   1 → Slash (Aggressive)
+     *   2 → Crush (Defensive)
+     *   3 → Stab  (Controlled — maps to stab as the closest equivalent)
+     *
+     * The exact mapping varies by weapon type; this covers the common sword/dagger layout.
+     * Staves always return CRUSH before this switch is reached.
+     */
     private AttackSubType resolveMeleeSubType(Client client)
     {
         ItemContainer equipment = client.getItemContainer(InventoryID.EQUIPMENT);

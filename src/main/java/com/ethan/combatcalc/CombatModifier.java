@@ -12,8 +12,18 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 
 /**
- * Handles special accuracy modifiers for equipment and buffs.
- * Includes Salve amulet, Slayer helm, Imbued Slayer helm, Prayer bonuses, etc.
+ * Computes special accuracy multipliers that sit on top of the base offensive roll.
+ *
+ * ### Multipliers applied (stacked multiplicatively)
+ *
+ *   Salve amulet     — +15% accuracy vs undead NPCs (name-based detection).
+ *   Slayer helmet    — +15% accuracy when on a Slayer task (task detection is a TODO;
+ *                       currently returns false so no bonus is applied).
+ *   Occult amulet    — +10% magic accuracy for listed magic-boosting amulets.
+ *   Prayer           — varies by prayer and combat type (see getPrayerAccuracyMultiplier).
+ *
+ * All equipment checks read the live ItemContainer for the EQUIPMENT inventory —
+ * no state is cached between ticks.
  */
 @Singleton
 public class CombatModifier
@@ -27,8 +37,14 @@ public class CombatModifier
     }
 
     /**
-     * Applies special accuracy modifiers to the offensive roll.
-     * Returns a multiplier to be applied to the offensive roll.
+     * Returns the combined accuracy multiplier for all active bonuses.
+     *
+     * Multipliers are applied in sequence (not averaged) to match how OSRS
+     * stacks bonuses in the base engine.
+     *
+     * @param combatType  The current combat style (used to pick the right prayer tier).
+     * @param npcProfile  The target NPC (used for Salve undead check and future Slayer task check).
+     * @return            A multiplier ≥ 1.0 to scale the offensive roll by.
      */
     public double getOffensiveRollMultiplier(CombatType combatType, NpcCombatProfile npcProfile)
     {
@@ -59,7 +75,15 @@ public class CombatModifier
     }
 
     /**
-     * Gets the prayer accuracy multiplier based on active prayers.
+     * Returns the prayer accuracy multiplier for the active prayer in the given combat style.
+     *
+     * Only the highest applicable prayer is returned (the player can only have one
+     * accuracy prayer active at a time in OSRS).
+     *
+     * Melee:  Clarity of Thought +5%, Improved Reflexes +10%,
+     *         Incredible Reflexes / Chivalry +15%, Piety +20%.
+     * Ranged: Sharp Eye +5%, Hawk Eye +10%, Eagle Eye +15%, Rigour +20%.
+     * Magic:  Mystic Will +5%, Mystic Lore +10%, Mystic Might +15%, Augury +25%.
      */
     private double getPrayerAccuracyMultiplier(CombatType combatType)
     {
@@ -232,7 +256,11 @@ public class CombatModifier
     }
 
     /**
-     * Checks if the NPC is undead (for Salve amulet bonus).
+     * Undead detection for the Salve amulet bonus.
+     *
+     * Uses a simple name-substring match against known undead keywords.
+     * This avoids needing an NPC ID list and covers variants (e.g. "Barrows brother").
+     * The check is case-insensitive.
      */
     private boolean isUndeadNPC(NpcCombatProfile npcProfile)
     {
@@ -256,8 +284,11 @@ public class CombatModifier
     }
 
     /**
-     * Placeholder for checking if player is on a Slayer task.
-     * This would require integration with RuneLite's Slayer plugin or similar.
+     * Slayer task detection — not yet implemented.
+     *
+     * Integrating with the RuneLite Slayer plugin would require a plugin dependency
+     * or reading the player’s Slayer task VarBit, which differs by task source.
+     * Until implemented, the Slayer helmet bonus is never applied.
      */
     private boolean isOnSlayerTask(NpcCombatProfile npcProfile)
     {

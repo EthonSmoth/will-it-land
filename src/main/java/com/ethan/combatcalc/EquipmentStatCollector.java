@@ -12,8 +12,23 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 
 /**
- * Collects equipment stats from the player's worn gear.
- * Reads via ItemManager and sums bonuses.
+ * Sums all offensive and defensive equipment bonuses from the player’s worn gear.
+ *
+ * ### How it works
+ *   On each call to collectBonuses(), the EQUIPMENT ItemContainer is read and every
+ *   occupied slot is iterated.  For each item, ItemManager.getItemStats() is called to
+ *   retrieve the cached ItemEquipmentStats, which exposes the same bonus columns shown
+ *   on the in-game equipment screen (stab, slash, crush, magic, ranged attack;
+ *   strength, ranged strength; all defence bonuses).
+ *
+ *   All values are summed into a plain EquipmentBonuses data object and returned.
+ *
+ * ### No caching
+ *   Stats are re-read fresh on every call.  This keeps the code simple and ensures
+ *   the values are always up to date without needing to listen to inventory change events.
+ *
+ * ### No file I/O or network calls
+ *   ItemManager serves stats from RuneLite’s local item cache — no external requests.
  */
 @Singleton
 public class EquipmentStatCollector

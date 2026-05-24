@@ -18,6 +18,22 @@ import javax.inject.Inject;
         description = "Combat accuracy calculator - shows hit chance % vs your target NPC",
         tags = {"combat", "accuracy", "overlay", "pvm"}
 )
+/**
+ * Main plugin class for Will It Land.
+ *
+ * What this plugin does:
+ *   - On every game tick, checks whether the local player is currently interacting with an NPC.
+ *   - If so, it reads the player's current skill levels (already boosted by potions via the API),
+ *     their equipped gear bonuses, and the target NPC's defensive stats from the bundled JSON database.
+ *   - It then runs the standard OSRS accuracy formula to produce a hit-chance percentage,
+ *     a max-hit value, and an estimated DPS figure.
+ *   - These values are stored in a CombatResult and picked up by WillItLandOverlay for display.
+ *
+ * No file I/O is performed at runtime.  NPC stats are loaded once at startup from the
+ * bundled npc_stats.json resource inside the jar (see NpcStatsRepository).
+ *
+ * The plugin only reads game state — it never writes to the game or sends any packets.
+ */
 public class WillItLandPlugin extends Plugin
 {
     @Inject
@@ -60,16 +76,33 @@ public class WillItLandPlugin extends Plugin
     @Override
     protected void startUp()
     {
+        // Register the overlay so it is drawn on screen.
         overlayManager.add(overlay);
     }
 
     @Override
     protected void shutDown()
     {
+        // Remove the overlay and reset state so nothing lingers after the plugin is disabled.
         overlayManager.remove(overlay);
         latestResult = new CombatResult();
     }
 
+    /**
+     * Runs once per game tick (~600 ms).
+     *
+     * Flow:
+     *   1. Bail out if no local player exists (e.g. loading screen).
+     *   2. Check who the player is currently interacting with.  If it is not an NPC
+     *      (e.g. another player, or nobody), clear the result and return — the overlay
+     *      will show nothing.
+     *   3. Determine what combat style is currently selected (melee/ranged/magic) and
+     *      which sub-type (stab/slash/crush).
+     *   4. Build a CombatProfile for the player using current boosted levels + gear.
+     *   5. Look up the target NPC's defensive stats from the JSON database.
+     *   6. Run the appropriate accuracy calculation and store the result.
+     *   7. Optionally populate debug breakdown lines if debug mode is on in config.
+     */
     @Subscribe
     public void onGameTick(GameTick event)
     {
@@ -144,6 +177,16 @@ public class WillItLandPlugin extends Plugin
         }
     }
 
+    /**
+     * Assembles a CombatProfile representing the player's current offensive stats.
+     *
+     * Skill levels are read via client.getBoostedSkillLevel(), which already returns
+     * the post-potion value — no manual potion detection is needed or performed.
+     *
+     * Equipment bonuses are summed across all worn slots by EquipmentStatCollector.
+     * The attack bonus selected depends on the active sub-type (stab/slash/crush for
+     * melee, ranged attack for ranged, magic attack for magic).
+     */
     private CombatProfile buildPlayerProfile(CombatType combatType, AttackSubType attackSubType)
     {
         CombatProfile profile = new CombatProfile();
@@ -202,6 +245,16 @@ public class WillItLandPlugin extends Plugin
         return profile;
     }
 
+    /**
+     * Estimates damage per second for display purposes only.
+     *
+     * Formula: (maxHit / 2) * hitChance / attackSpeed
+     *   - maxHit / 2 approximates average damage per hit (uniform distribution 0..maxHit).
+     *   - attackSpeed is assumed to be 2.4 seconds (4 ticks), a common weapon speed.
+     *
+     * This is a simplified estimate; actual DPS varies by weapon speed and
+     * special attack usage.  The overlay labels it "DPS (est)" to reflect this.
+     */
     private double calculateDPS(CombatResult result)
     {
         if (result.getMaxHit() <= 0 || result.getHitChance() <= 0)

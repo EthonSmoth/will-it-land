@@ -13,7 +13,22 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 /**
- * Repository for NPC combat stats loaded from JSON.
+ * Loads and provides NPC defensive combat stats from the bundled JSON database.
+ *
+ * ### Data source
+ *   npc_stats.json is packaged inside the jar under src/main/resources/.
+ *   It is loaded once at construction time via getClass().getResourceAsStream().
+ *   No file system access is performed — the resource lives entirely inside the jar.
+ *
+ * ### Lookup
+ *   NPCs are keyed by name (exact match first, then case-insensitive fallback).
+ *   If a name is not found, an empty NpcCombatProfile is returned so the plugin
+ *   degrades gracefully, showing a “⚠ NPC Unknown” warning in the overlay.
+ *
+ * ### Data model
+ *   Each entry deserialises into an NpcCombatProfile which holds:
+ *     defenceLevel, magicLevel, stabDefence, slashDefence, crushDefence,
+ *     rangedDefence, magicDefence.
  */
 @Singleton
 public class NpcStatsRepository

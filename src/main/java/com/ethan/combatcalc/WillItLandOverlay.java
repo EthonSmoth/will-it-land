@@ -10,6 +10,19 @@ import javax.inject.Inject;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 
+/**
+ * Draws the in-game overlay panel.
+ *
+ * The overlay is registered/deregistered by WillItLandPlugin on startup/shutdown.
+ * On every frame, render() pulls the latest CombatResult from the plugin and builds
+ * a list of text rows to display.
+ *
+ * Each row is guarded by a config toggle so the player can choose exactly what
+ * information they want to see (attack style, hit chance, max hit, DPS, NPC warning,
+ * and a debug breakdown).
+ *
+ * No game state is read here — all data comes from the pre-computed CombatResult.
+ */
 public class WillItLandOverlay extends OverlayPanel
 {
     private final WillItLandPlugin plugin;
@@ -31,6 +44,7 @@ public class WillItLandOverlay extends OverlayPanel
 
         CombatResult result = plugin.getLatestResult();
 
+        // If no valid combat type is set the player has no active NPC target — render nothing.
         if (result.getCombatType() == null || result.getCombatType() == CombatType.UNKNOWN)
         {
             return super.render(graphics);
