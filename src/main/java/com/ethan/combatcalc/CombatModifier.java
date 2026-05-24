@@ -66,48 +66,63 @@ public class CombatModifier
         switch (combatType)
         {
             case MELEE:
-                // Precise Shot, Improved Juju (not applicable to melee)
+                if (client.isPrayerActive(Prayer.PIETY))
+                {
+                    return 1.20; // 20% boost
+                }
+                if (client.isPrayerActive(Prayer.CHIVALRY))
+                {
+                    return 1.15; // 15% boost
+                }
+                if (client.isPrayerActive(Prayer.INCREDIBLE_REFLEXES))
+                {
+                    return 1.15; // 15% boost
+                }
+                if (client.isPrayerActive(Prayer.IMPROVED_REFLEXES))
+                {
+                    return 1.10; // 10% boost
+                }
                 if (client.isPrayerActive(Prayer.CLARITY_OF_THOUGHT))
                 {
                     return 1.05; // 5% boost
                 }
-                if (client.isPrayerActive(Prayer.IMPROVED_REFLEXES))
-                {
-                    return 1.1; // 10% boost
-                }
-                if (client.isPrayerActive(Prayer.MYSTIC_WILL))
-                {
-                    return 1.0; // No melee bonus (magic prayer)
-                }
                 break;
 
             case RANGED:
-                if (client.isPrayerActive(Prayer.SHARP_EYE))
+                if (client.isPrayerActive(Prayer.RIGOUR))
                 {
-                    return 1.05; // 5% boost
-                }
-                if (client.isPrayerActive(Prayer.HAWK_EYE))
-                {
-                    return 1.1; // 10% boost
+                    return 1.20; // 20% boost
                 }
                 if (client.isPrayerActive(Prayer.EAGLE_EYE))
                 {
                     return 1.15; // 15% boost
                 }
-                break;
-
-            case MAGIC:
-                if (client.isPrayerActive(Prayer.MYSTIC_WILL))
+                if (client.isPrayerActive(Prayer.HAWK_EYE))
+                {
+                    return 1.10; // 10% boost
+                }
+                if (client.isPrayerActive(Prayer.SHARP_EYE))
                 {
                     return 1.05; // 5% boost
                 }
-                if (client.isPrayerActive(Prayer.MYSTIC_LORE))
+                break;
+
+            case MAGIC:
+                if (client.isPrayerActive(Prayer.AUGURY))
                 {
-                    return 1.1; // 10% boost
+                    return 1.25; // 25% boost
                 }
                 if (client.isPrayerActive(Prayer.MYSTIC_MIGHT))
                 {
                     return 1.15; // 15% boost
+                }
+                if (client.isPrayerActive(Prayer.MYSTIC_LORE))
+                {
+                    return 1.10; // 10% boost
+                }
+                if (client.isPrayerActive(Prayer.MYSTIC_WILL))
+                {
+                    return 1.05; // 5% boost
                 }
                 break;
         }

@@ -7,7 +7,6 @@ import net.runelite.api.Player;
 import net.runelite.api.Skill;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.api.events.GameTick;
-import net.runelite.client.config.ConfigManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
@@ -31,7 +30,7 @@ public class WillItLandPlugin extends Plugin
     private WillItLandOverlay overlay;
 
     @Inject
-    private ConfigManager configManager;
+    private WillItLandConfig config;
 
     @Inject
     private AttackStyleResolver attackStyleResolver;
@@ -45,12 +44,6 @@ public class WillItLandPlugin extends Plugin
     @Inject
     private NpcStatsRepository npcStatsRepository;
 
-    @Inject
-    private PotionBoostDetector potionBoostDetector;
-
-    @Inject
-    private EquipmentSynergyDetector equipmentSynergyDetector;
-
     private CombatResult latestResult = new CombatResult();
 
     public CombatResult getLatestResult()
@@ -58,9 +51,9 @@ public class WillItLandPlugin extends Plugin
         return latestResult;
     }
 
-    public ConfigManager getConfigManager()
+    public WillItLandConfig getConfig()
     {
-        return configManager;
+        return config;
     }
 
 
@@ -134,8 +127,7 @@ public class WillItLandPlugin extends Plugin
         }
 
         // Add debug info if enabled
-        if (configManager.getConfiguration("willitland", "debugMode") != null &&
-            Boolean.parseBoolean(configManager.getConfiguration("willitland", "debugMode")))
+        if (config.debugMode())
         {
             StringBuilder debugInfo = new StringBuilder();
             debugInfo.append("Offensive Roll: ").append(latestResult.getOffensiveRoll()).append("\n");
@@ -158,22 +150,11 @@ public class WillItLandPlugin extends Plugin
         profile.setCombatType(combatType);
         profile.setAttackSubType(attackSubType);
 
-        // Get effective levels
+        // getBoostedSkillLevel() already includes active potion effects
         int attackLevel = client.getBoostedSkillLevel(Skill.ATTACK);
         int rangedLevel = client.getBoostedSkillLevel(Skill.RANGED);
         int magicLevel = client.getBoostedSkillLevel(Skill.MAGIC);
         int strengthLevel = client.getBoostedSkillLevel(Skill.STRENGTH);
-
-        // Apply potion boosts if enabled
-        String potionDetectionConfig = configManager.getConfiguration("willitland", "enablePotionDetection");
-        boolean enablePotions = potionDetectionConfig == null || Boolean.parseBoolean(potionDetectionConfig);
-
-        if (enablePotions)
-        {
-            attackLevel += potionBoostDetector.getAttackBoost();
-            rangedLevel += potionBoostDetector.getRangedBoost();
-            magicLevel += potionBoostDetector.getMagicBoost();
-        }
 
         // Collect equipment bonuses
         EquipmentStatCollector.EquipmentBonuses equipment = equipmentCollector.collectBonuses();

@@ -13,11 +13,13 @@ import java.awt.Graphics2D;
 public class WillItLandOverlay extends OverlayPanel
 {
     private final WillItLandPlugin plugin;
+    private final WillItLandConfig config;
 
     @Inject
-    public WillItLandOverlay(WillItLandPlugin plugin)
+    public WillItLandOverlay(WillItLandPlugin plugin, WillItLandConfig config)
     {
         this.plugin = plugin;
+        this.config = config;
         setPosition(OverlayPosition.TOP_LEFT);
         setPriority(OverlayPriority.MED);
     }
@@ -44,27 +46,33 @@ public class WillItLandOverlay extends OverlayPanel
                 .leftColor(Color.CYAN)
                 .build());
 
-        // Attack style line - always show
-        String attackStyle = result.getAttackSubType() != null ? result.getAttackSubType().getDisplayName() : "Unknown";
-        panelComponent.getChildren().add(LineComponent.builder()
-                .left("Style")
-                .right(attackStyle)
-                .rightColor(getStyleColor(result.getAttackSubType()))
-                .build());
+        // Attack style line
+        if (config.showAttackStyle())
+        {
+            String attackStyle = result.getAttackSubType() != null ? result.getAttackSubType().getDisplayName() : "Unknown";
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Style")
+                    .right(attackStyle)
+                    .rightColor(getStyleColor(result.getAttackSubType()))
+                    .build());
+        }
 
-        // Hit chance with color coding - always show
-        double hitChance = result.getHitChance();
-        String hitChanceFormatted = result.formatHitChance();
-        Color hitChanceColor = getHitChanceColor(hitChance);
+        // Hit chance with color coding
+        if (config.showHitChance())
+        {
+            double hitChance = result.getHitChance();
+            String hitChanceFormatted = result.formatHitChance();
+            Color hitChanceColor = getHitChanceColor(hitChance);
 
-        panelComponent.getChildren().add(LineComponent.builder()
-                .left("Hit Chance")
-                .right(hitChanceFormatted)
-                .rightColor(hitChanceColor)
-                .build());
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Hit Chance")
+                    .right(hitChanceFormatted)
+                    .rightColor(hitChanceColor)
+                    .build());
+        }
 
-        // Max hit - always show
-        if (result.getMaxHit() > 0)
+        // Max hit
+        if (config.showMaxHit() && result.getMaxHit() > 0)
         {
             panelComponent.getChildren().add(LineComponent.builder()
                     .left("Max Hit")
@@ -73,8 +81,8 @@ public class WillItLandOverlay extends OverlayPanel
                     .build());
         }
 
-        // DPS - always show
-        if (result.getMaxHit() > 0)
+        // DPS
+        if (config.showDPS() && result.getMaxHit() > 0)
         {
             double dps = calculateDPS(result);
             panelComponent.getChildren().add(LineComponent.builder()
@@ -85,7 +93,7 @@ public class WillItLandOverlay extends OverlayPanel
         }
 
         // Show warning if NPC stats were not found
-        if (result.isNpcUnknown())
+        if (config.showNpcWarning() && result.isNpcUnknown())
         {
             panelComponent.getChildren().add(LineComponent.builder()
                     .left("⚠ NPC Unknown")

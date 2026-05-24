@@ -111,10 +111,11 @@ public class EquipmentSynergyDetector
             return false;
         }
 
-        // Check for Void robe top (8840), Void robe legs (8842), Void gloves (8844)
-        return top != null && top.getId() == 8840 &&
-                legs != null && legs.getId() == 8842 &&
-                hands != null && hands.getId() == 8844;
+        // Void knight top (8839) or Elite void top (13072), Void robe/legs (8840) or Elite (13073), Void gloves (8842)
+        boolean validTop = top != null && (top.getId() == 8839 || top.getId() == 13072);
+        boolean validLegs = legs != null && (legs.getId() == 8840 || legs.getId() == 13073);
+        boolean validGloves = hands != null && hands.getId() == 8842;
+        return validTop && validLegs && validGloves;
     }
 
     /**
@@ -133,11 +134,17 @@ public class EquipmentSynergyDetector
         Item legs = equipment.getItem(EquipmentInventorySlot.LEGS.getSlotIdx());
         Item weapon = equipment.getItem(EquipmentInventorySlot.WEAPON.getSlotIdx());
 
-        // Obsidian helmet (11665), Obsidian platebody (11663), Obsidian platelegs (11661), Obsidian maul (6718)
-        return helmet != null && helmet.getId() == 11665 &&
-                top != null && top.getId() == 11663 &&
-                legs != null && legs.getId() == 11661 &&
-                weapon != null && weapon.getId() == 6718;
+        // Obsidian helm (21298), platebody (21301), platelegs (21304) + any obsidian weapon
+        if (helmet == null || top == null || legs == null || weapon == null)
+        {
+            return false;
+        }
+        boolean wearingArmour = helmet.getId() == 21298 && top.getId() == 21301 && legs.getId() == 21304;
+        // Obsidian weapons: Toktz-xil-ul (6522), Toktz-xil-ak (6523), Toktz-xil-ek (6524),
+        //                   Toktz-mej-tal (6526), Toktz-ket-em (6528)
+        int wid = weapon.getId();
+        boolean wearingObsidianWeapon = wid == 6522 || wid == 6523 || wid == 6524 || wid == 6526 || wid == 6528;
+        return wearingArmour && wearingObsidianWeapon;
     }
 
     /**
