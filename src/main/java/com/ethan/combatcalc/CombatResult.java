@@ -14,6 +14,7 @@ public class CombatResult
     private boolean npcUnknown; // Flag if NPC stats were not found in database
     private boolean debugMode; // Flag for debug display
     private String debugInfo; // Debug information string
+    private WeaponInfo weaponInfo;
 
     public CombatResult()
     {
@@ -24,6 +25,7 @@ public class CombatResult
         this.npcUnknown = false;
         this.debugMode = false;
         this.debugInfo = "";
+        this.weaponInfo = WeaponInfo.empty();
     }
 
     // Getters and Setters
@@ -115,6 +117,16 @@ public class CombatResult
     public void setDebugInfo(String debugInfo)
     {
         this.debugInfo = debugInfo;
+    }
+
+    public WeaponInfo getWeaponInfo()
+    {
+        return weaponInfo;
+    }
+
+    public void setWeaponInfo(WeaponInfo weaponInfo)
+    {
+        this.weaponInfo = weaponInfo == null ? WeaponInfo.empty() : weaponInfo;
     }
 
     /**

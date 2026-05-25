@@ -6,6 +6,8 @@ import net.runelite.api.InventoryID;
 import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.VarPlayer;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.widgets.Widget;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -80,6 +82,13 @@ public class AttackStyleResolver
         if (spell > 0)
         {
             return CombatType.MAGIC;
+        }
+
+        AttackSubType widgetSubType = resolveSubTypeFromCombatOptions(client);
+        CombatType widgetCombatType = WeaponAttackStyles.combatTypeFor(widgetSubType);
+        if (widgetCombatType != CombatType.UNKNOWN)
+        {
+            return widgetCombatType;
         }
 
         // Check attack style - ranged style is 3
@@ -211,6 +220,12 @@ public class AttackStyleResolver
      */
     private AttackSubType resolveMeleeSubType(Client client)
     {
+        AttackSubType widgetSubType = resolveSubTypeFromCombatOptions(client);
+        if (widgetSubType != AttackSubType.UNKNOWN)
+        {
+            return widgetSubType;
+        }
+
         ItemContainer equipment = client.getItemContainer(InventoryID.EQUIPMENT);
         Item weapon = equipment != null ? equipment.getItem(EquipmentInventorySlot.WEAPON.getSlotIdx()) : null;
 
@@ -241,5 +256,16 @@ public class AttackStyleResolver
             default:
                 return AttackSubType.UNKNOWN;
         }
+    }
+
+    private AttackSubType resolveSubTypeFromCombatOptions(Client client)
+    {
+        Widget categoryWidget = client.getWidget(InterfaceID.CombatInterface.CATEGORY);
+        if (categoryWidget == null)
+        {
+            return AttackSubType.UNKNOWN;
+        }
+
+        return WeaponAttackStyles.resolveAttackSubType(categoryWidget.getText(), client.getVarpValue(VarPlayer.ATTACK_STYLE));
     }
 }

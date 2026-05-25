@@ -106,6 +106,11 @@ public class WillItLandOverlay extends OverlayPanel
                     .build());
         }
 
+        if (config.showWeaponIntel())
+        {
+            renderWeaponIntel(result.getWeaponInfo());
+        }
+
         // Show warning if NPC stats were not found
         if (config.showNpcWarning() && result.isNpcUnknown())
         {
@@ -141,6 +146,116 @@ public class WillItLandOverlay extends OverlayPanel
         }
 
         return super.render(graphics);
+    }
+
+    private void renderWeaponIntel(WeaponInfo weaponInfo)
+    {
+        if (weaponInfo == null || !weaponInfo.hasWeapon())
+        {
+            return;
+        }
+
+        panelComponent.getChildren().add(LineComponent.builder()
+                .left("")
+                .build());
+        panelComponent.getChildren().add(LineComponent.builder()
+                .left("Weapon")
+                .right(weaponInfo.getWeaponName())
+                .rightColor(new Color(255, 220, 120))
+                .build());
+
+        String relevantBonuses = weaponInfo.formatRelevantBonuses();
+        if (!relevantBonuses.isEmpty())
+        {
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Bonuses")
+                    .right(relevantBonuses)
+                    .rightColor(new Color(220, 220, 220))
+                    .build());
+        }
+
+        if (config.showWeaponSpeed())
+        {
+            String speed = weaponInfo.formatAttackSpeed();
+            if (!speed.isEmpty())
+            {
+                panelComponent.getChildren().add(LineComponent.builder()
+                        .left("Speed")
+                        .right(speed)
+                        .rightColor(new Color(180, 220, 255))
+                        .build());
+            }
+        }
+
+        if (config.showWeaponRange())
+        {
+            String range = weaponInfo.formatRange();
+            if (!range.isEmpty())
+            {
+                panelComponent.getChildren().add(LineComponent.builder()
+                        .left("Range")
+                        .right(range)
+                        .rightColor(new Color(180, 255, 180))
+                        .build());
+            }
+        }
+
+        if (config.showWeaponAmmo() && weaponInfo.hasAmmo())
+        {
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Ammo")
+                    .right(weaponInfo.getAmmoName())
+                    .rightColor(new Color(200, 255, 200))
+                    .build());
+        }
+
+        if (config.showWeaponSpecialAttack() && weaponInfo.hasSpecialAttack())
+        {
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Spec")
+                    .right(weaponInfo.getSpecialAttack().formatSummary())
+                    .rightColor(new Color(255, 180, 180))
+                    .build());
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Energy")
+                    .right(weaponInfo.getSpecialEnergyPercent() + "%")
+                    .rightColor(new Color(255, 220, 160))
+                    .build());
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Spec note")
+                    .right(weaponInfo.getSpecialAttack().getDescription())
+                    .rightColor(new Color(220, 220, 220))
+                    .build());
+        }
+
+        if (config.showWeaponPassiveEffects())
+        {
+            for (String passiveEffect : weaponInfo.getPassiveEffects())
+            {
+                panelComponent.getChildren().add(LineComponent.builder()
+                        .left("Effect")
+                        .right(passiveEffect)
+                        .rightColor(new Color(220, 220, 220))
+                        .build());
+            }
+            for (String note : weaponInfo.getNotes())
+            {
+                panelComponent.getChildren().add(LineComponent.builder()
+                        .left("Note")
+                        .right(note)
+                        .rightColor(new Color(220, 220, 220))
+                        .build());
+            }
+        }
+
+        if (config.showWeaponRawBonuses())
+        {
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Raw atk")
+                    .right(weaponInfo.formatAllOffensiveBonuses())
+                    .rightColor(new Color(190, 190, 190))
+                    .build());
+        }
     }
 
 

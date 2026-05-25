@@ -60,6 +60,9 @@ public class WillItLandPlugin extends Plugin
     private CombatCalculator combatCalculator;
 
     @Inject
+    private WeaponInfoCollector weaponInfoCollector;
+
+    @Inject
     private NpcStatsRepository npcStatsRepository;
 
     private CombatResult latestResult = new CombatResult();
@@ -139,6 +142,7 @@ public class WillItLandPlugin extends Plugin
 
         // Build player combat profile
         CombatProfile playerProfile = buildPlayerProfile(combatType, attackSubType);
+        WeaponInfo weaponInfo = weaponInfoCollector.collect(attackSubType);
 
         // Build NPC combat profile
         NpcCombatProfile npcProfile = npcStatsRepository.getNpcProfile(targetNpc.getName());
@@ -159,6 +163,8 @@ public class WillItLandPlugin extends Plugin
         {
             latestResult = combatCalculator.calculateMagicAccuracy(playerProfile, npcProfile);
         }
+
+        latestResult.setWeaponInfo(weaponInfo);
 
         // Set unknown flag if NPC wasn't in database
         if (!npcFound)

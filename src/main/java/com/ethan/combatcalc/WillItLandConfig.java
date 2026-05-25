@@ -104,9 +104,100 @@ public interface WillItLandConfig extends Config
     }
 
     @ConfigSection(
+            name = "Weapon Intel",
+            description = "Show details about your current weapon",
+            position = 1
+    )
+    String weaponIntelSection = "weaponIntel";
+
+    @ConfigItem(
+            keyName = "showWeaponIntel",
+            name = "Show Weapon Intel",
+            description = "Display details about your current weapon while fighting an NPC",
+            section = weaponIntelSection,
+            position = 0
+    )
+    default boolean showWeaponIntel()
+    {
+        return false;
+    }
+
+    @ConfigItem(
+            keyName = "showWeaponSpeed",
+            name = "Show Speed",
+            description = "Display weapon attack speed",
+            section = weaponIntelSection,
+            position = 1
+    )
+    default boolean showWeaponSpeed()
+    {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "showWeaponRange",
+            name = "Show Range",
+            description = "Display weapon attack range when known",
+            section = weaponIntelSection,
+            position = 2
+    )
+    default boolean showWeaponRange()
+    {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "showWeaponSpecialAttack",
+            name = "Show Special Attack",
+            description = "Display special attack energy and known effects",
+            section = weaponIntelSection,
+            position = 3
+    )
+    default boolean showWeaponSpecialAttack()
+    {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "showWeaponPassiveEffects",
+            name = "Show Passive Effects",
+            description = "Display known passive effects and important notes",
+            section = weaponIntelSection,
+            position = 4
+    )
+    default boolean showWeaponPassiveEffects()
+    {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "showWeaponAmmo",
+            name = "Show Ammo",
+            description = "Display equipped ammo when present",
+            section = weaponIntelSection,
+            position = 5
+    )
+    default boolean showWeaponAmmo()
+    {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "showWeaponRawBonuses",
+            name = "Show Raw Bonuses",
+            description = "Display raw offensive weapon bonuses",
+            section = weaponIntelSection,
+            position = 6
+    )
+    default boolean showWeaponRawBonuses()
+    {
+        return false;
+    }
+
+    @ConfigSection(
             name = "Debug Settings",
             description = "Advanced debugging options",
-            position = 1
+            position = 2
     )
     String debugSection = "debug";
 
@@ -137,7 +228,7 @@ public interface WillItLandConfig extends Config
     @ConfigSection(
             name = "Visual Settings",
             description = "Customize appearance",
-            position = 2
+            position = 3
     )
     String visualSection = "visual";
 
@@ -180,7 +271,7 @@ public interface WillItLandConfig extends Config
     @ConfigSection(
             name = "Feature Toggles",
             description = "Enable/disable specific features",
-            position = 3
+            position = 4
     )
     String featureSection = "features";
 
