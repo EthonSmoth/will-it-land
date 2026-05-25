@@ -1,11 +1,13 @@
 package com.ethan.combatcalc;
 
+import com.google.inject.Provides;
 import net.runelite.api.Actor;
 import net.runelite.api.Client;
 import net.runelite.api.NPC;
 import net.runelite.api.Player;
 import net.runelite.api.Skill;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.api.events.GameTick;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
@@ -72,6 +74,11 @@ public class WillItLandPlugin extends Plugin
         return config;
     }
 
+    @Provides
+    WillItLandConfig provideConfig(ConfigManager configManager)
+    {
+        return configManager.getConfig(WillItLandConfig.class);
+    }
 
     @Override
     protected void startUp()
