@@ -5,6 +5,7 @@ import javax.inject.Singleton;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
 @Singleton
 public class WeaknessAnalyzer
@@ -33,7 +34,9 @@ public class WeaknessAnalyzer
         }
 
         List<WeaponInfo> candidates = candidateWeapons == null ? Collections.emptyList() : candidateWeapons;
-        AttackSubType defensiveWeakness = weakestDefence(npcProfile, ALL_DEFENCE_TYPES);
+        AttackSubType derivedDefensiveWeakness = weakestDefence(npcProfile, ALL_DEFENCE_TYPES);
+        AttackSubType wikiWeakness = mapWikiWeakness(npcProfile.getWikiWeakness());
+        AttackSubType defensiveWeakness = wikiWeakness != AttackSubType.UNKNOWN ? wikiWeakness : derivedDefensiveWeakness;
         AttackSubType weaponWeakness = weakestDefence(npcProfile, MELEE_WEAPON_TYPES);
         WeaponChoice recommendation = recommendWeapon(candidates, defensiveWeakness);
 
@@ -48,7 +51,9 @@ public class WeaknessAnalyzer
                 weaponWeakness,
                 npcProfile.getDefenceBonusForAttackType(weaponWeakness),
                 recommendation != null ? recommendation.weapon.getWeaponName() : null,
-                recommendation != null ? recommendation.style : AttackSubType.UNKNOWN);
+                recommendation != null ? recommendation.style : AttackSubType.UNKNOWN,
+                wikiWeakness != AttackSubType.UNKNOWN ? normalizeWeaknessLabel(npcProfile.getWikiWeakness()) : formatStyle(defensiveWeakness),
+                wikiWeakness != AttackSubType.UNKNOWN ? "wiki" : "derived");
     }
 
     private AttackSubType weakestDefence(NpcCombatProfile npcProfile, List<AttackSubType> types)
@@ -67,6 +72,46 @@ public class WeaknessAnalyzer
         }
 
         return weakest;
+    }
+
+    private AttackSubType mapWikiWeakness(String wikiWeakness)
+    {
+        if (wikiWeakness == null)
+        {
+            return AttackSubType.UNKNOWN;
+        }
+
+        String normalized = normalizeWeaknessLabel(wikiWeakness);
+        switch (normalized)
+        {
+            case "stab":
+                return AttackSubType.STAB;
+            case "slash":
+                return AttackSubType.SLASH;
+            case "crush":
+                return AttackSubType.CRUSH;
+            case "range":
+            case "ranged":
+                return AttackSubType.RANGED;
+            case "magic":
+            case "air":
+            case "earth":
+            case "fire":
+            case "water":
+                return AttackSubType.MAGIC;
+            default:
+                return AttackSubType.UNKNOWN;
+        }
+    }
+
+    private String normalizeWeaknessLabel(String weakness)
+    {
+        return weakness == null ? "" : weakness.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String formatStyle(AttackSubType attackSubType)
+    {
+        return attackSubType == null ? "Unknown" : attackSubType.getDisplayName();
     }
 
     private WeaponChoice recommendWeapon(List<WeaponInfo> candidates, AttackSubType desiredStyle)

@@ -50,6 +50,23 @@ public class CombatModifierTest
     }
 
     @Test
+    public void magicDamageAmuletsDoNotAddMagicAccuracy()
+    {
+        CombatModifier modifier = new CombatModifier(clientWithAmulet(ItemID.OCCULT_NECKLACE));
+
+        assertEquals(1.0, modifier.getOffensiveRollMultiplier(CombatType.MAGIC, new NpcCombatProfile("Cow")), 0.0001);
+    }
+
+    @Test
+    public void missingClientFallsBackToNoModifier()
+    {
+        CombatModifier modifier = new CombatModifier(null);
+
+        assertEquals(1.0, modifier.getOffensiveRollMultiplier(CombatType.MELEE, new NpcCombatProfile("Cow")), 0.0001);
+        assertEquals(1.0, modifier.getDamageMultiplier(CombatType.MELEE, new NpcCombatProfile("Cow")), 0.0001);
+    }
+
+    @Test
     public void offensivePrayersUseStyleSpecificMultipliers()
     {
         CombatModifier piety = new CombatModifier(clientWithPrayers(Prayer.PIETY));
@@ -61,6 +78,57 @@ public class CombatModifierTest
         assertEquals(1.20, rigour.getAccuracyPrayerMultiplier(CombatType.RANGED), 0.0001);
         assertEquals(1.23, rigour.getRangedStrengthPrayerMultiplier(), 0.0001);
         assertEquals(1.25, augury.getAccuracyPrayerMultiplier(CombatType.MAGIC), 0.0001);
+    }
+
+    @Test
+    public void slayerHelmetAppliesOnMatchingTask()
+    {
+        CombatModifier modifier = new CombatModifier(
+                clientWithHead(ItemID.SLAYER_HELMET_I),
+                config(true, true, true),
+                null,
+                () -> "Skeletons");
+
+        assertEquals(1.15, modifier.getOffensiveRollMultiplier(CombatType.MELEE, new NpcCombatProfile("Skeleton")), 0.0001);
+        assertEquals(1.15, modifier.getDamageMultiplier(CombatType.MELEE, new NpcCombatProfile("Skeleton")), 0.0001);
+    }
+
+    @Test
+    public void imbuedSlayerHelmetAppliesToMagicAndRangedOnMatchingTask()
+    {
+        CombatModifier modifier = new CombatModifier(
+                clientWithHead(ItemID.SLAYER_HELMET_I),
+                config(true, true, true),
+                null,
+                () -> "Abyssal demons");
+
+        assertEquals(1.15, modifier.getOffensiveRollMultiplier(CombatType.MAGIC, new NpcCombatProfile("Abyssal demon")), 0.0001);
+        assertEquals(1.15, modifier.getDamageMultiplier(CombatType.RANGED, new NpcCombatProfile("Abyssal demon")), 0.0001);
+    }
+
+    @Test
+    public void slayerHelmetDoesNotApplyOffTask()
+    {
+        CombatModifier modifier = new CombatModifier(
+                clientWithHead(ItemID.SLAYER_HELMET_I),
+                config(true, true, true),
+                null,
+                () -> "Goblins");
+
+        assertEquals(1.0, modifier.getOffensiveRollMultiplier(CombatType.MELEE, new NpcCombatProfile("Skeleton")), 0.0001);
+    }
+
+    @Test
+    public void salveAndSlayerHelmetDoNotStack()
+    {
+        CombatModifier modifier = new CombatModifier(
+                itemClient(ItemID.SLAYER_HELMET_I, ItemID.SALVE_AMULETEI),
+                config(true, true, true),
+                null,
+                () -> "Skeletons");
+
+        assertEquals(1.20, modifier.getOffensiveRollMultiplier(CombatType.MELEE, new NpcCombatProfile("Skeleton")), 0.0001);
+        assertEquals(1.20, modifier.getDamageMultiplier(CombatType.MAGIC, new NpcCombatProfile("Skeleton")), 0.0001);
     }
 
     @Test
@@ -99,6 +167,16 @@ public class CombatModifierTest
                 ? EnumSet.noneOf(Prayer.class)
                 : EnumSet.copyOf(java.util.Arrays.asList(prayers));
         return client(itemContainerWithAmulet(-1), activePrayers);
+    }
+
+    private static Client clientWithHead(int headId)
+    {
+        return client(itemContainerWithHead(headId), EnumSet.noneOf(Prayer.class));
+    }
+
+    private static Client itemClient(int headId, int amuletId)
+    {
+        return client(itemContainerWithHeadAndAmulet(headId, amuletId), EnumSet.noneOf(Prayer.class));
     }
 
     private static Client client(ItemContainer equipment, Set<Prayer> activePrayers)
@@ -155,6 +233,46 @@ public class CombatModifierTest
                             && amuletId != -1)
                     {
                         return new Item(amuletId, 1);
+                    }
+                    return defaultValue(method.getReturnType());
+                });
+    }
+
+    private static ItemContainer itemContainerWithHead(int headId)
+    {
+        return (ItemContainer) Proxy.newProxyInstance(
+                ItemContainer.class.getClassLoader(),
+                new Class<?>[]{ItemContainer.class},
+                (proxy, method, args) ->
+                {
+                    if ("getItem".equals(method.getName())
+                            && ((Integer) args[0]) == EquipmentInventorySlot.HEAD.getSlotIdx()
+                            && headId != -1)
+                    {
+                        return new Item(headId, 1);
+                    }
+                    return defaultValue(method.getReturnType());
+                });
+    }
+
+    private static ItemContainer itemContainerWithHeadAndAmulet(int headId, int amuletId)
+    {
+        return (ItemContainer) Proxy.newProxyInstance(
+                ItemContainer.class.getClassLoader(),
+                new Class<?>[]{ItemContainer.class},
+                (proxy, method, args) ->
+                {
+                    if ("getItem".equals(method.getName()))
+                    {
+                        int slot = (Integer) args[0];
+                        if (slot == EquipmentInventorySlot.HEAD.getSlotIdx() && headId != -1)
+                        {
+                            return new Item(headId, 1);
+                        }
+                        if (slot == EquipmentInventorySlot.AMULET.getSlotIdx() && amuletId != -1)
+                        {
+                            return new Item(amuletId, 1);
+                        }
                     }
                     return defaultValue(method.getReturnType());
                 });

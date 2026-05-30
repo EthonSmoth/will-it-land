@@ -237,6 +237,54 @@ public interface WillItLandConfig extends Config
         return true;
     }
 
+    @ConfigItem(
+            keyName = "showAllNpcWeaknessOverlays",
+            name = "Show All NPC Weaknesses",
+            description = "Display weakness labels above nearby NPCs instead of only your current target",
+            section = debugSection,
+            position = 3
+    )
+    default boolean showAllNpcWeaknessOverlays()
+    {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "onlyShowWeaknessInCombat",
+            name = "Only Show In Combat",
+            description = "Only show above-NPC weakness labels for your target or NPCs attacking you",
+            section = debugSection,
+            position = 4
+    )
+    default boolean onlyShowWeaknessInCombat()
+    {
+        return false;
+    }
+
+    @ConfigItem(
+            keyName = "weaknessMinimumCombatLevel",
+            name = "Minimum NPC Level",
+            description = "Hide above-NPC weakness labels below this combat level",
+            section = debugSection,
+            position = 5
+    )
+    default int weaknessMinimumCombatLevel()
+    {
+        return 0;
+    }
+
+    @ConfigItem(
+            keyName = "showNpcThreatIntel",
+            name = "Show NPC Threat Intel",
+            description = "Display NPC level, max hit, aggression, weakness source, and best weapon in the panel",
+            section = debugSection,
+            position = 6
+    )
+    default boolean showNpcThreatIntel()
+    {
+        return true;
+    }
+
     @ConfigSection(
             name = "Visual Settings",
             description = "Customize appearance",
@@ -288,23 +336,11 @@ public interface WillItLandConfig extends Config
     String featureSection = "features";
 
     @ConfigItem(
-            keyName = "enablePotionDetection",
-            name = "Enable Potion Detection",
-            description = "Detect and apply potion boosts",
-            section = featureSection,
-            position = 0
-    )
-    default boolean enablePotionDetection()
-    {
-        return true;
-    }
-
-    @ConfigItem(
             keyName = "enableEquipmentSets",
             name = "Enable Equipment Set Effects",
             description = "Detect and apply equipment set bonuses",
             section = featureSection,
-            position = 1
+            position = 0
     )
     default boolean enableEquipmentSets()
     {
@@ -316,7 +352,7 @@ public interface WillItLandConfig extends Config
             name = "Enable Prayer Bonuses",
             description = "Apply active prayer accuracy boosts",
             section = featureSection,
-            position = 2
+            position = 1
     )
     default boolean enablePrayerBonuses()
     {
@@ -328,7 +364,7 @@ public interface WillItLandConfig extends Config
             name = "Enable Special Modifiers",
             description = "Apply Salve amulet, Slayer helm, etc.",
             section = featureSection,
-            position = 3
+            position = 2
     )
     default boolean enableSpecialModifiers()
     {

@@ -79,4 +79,22 @@ public class WeaknessAnalyzerTest
         assertEquals("Rune scimitar", summary.getRecommendedWeaponName());
         assertEquals(AttackSubType.SLASH, summary.getRecommendedWeaponStyle());
     }
+
+    @Test
+    public void wikiWeaknessOverridesDerivedStats()
+    {
+        NpcCombatProfile profile = new NpcCombatProfile("Blue Dragon");
+        profile.setStabDefence(-10);
+        profile.setSlashDefence(0);
+        profile.setCrushDefence(0);
+        profile.setRangedDefence(0);
+        profile.setMagicDefence(30);
+        profile.setWikiWeakness("water");
+
+        WeaknessSummary summary = analyzer.analyze(profile, Collections.emptyList());
+
+        assertEquals(AttackSubType.MAGIC, summary.getDefensiveWeakness());
+        assertEquals("water", summary.getWeaknessLabel());
+        assertEquals("wiki", summary.getWeaknessSource());
+    }
 }

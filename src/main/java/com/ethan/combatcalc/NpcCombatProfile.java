@@ -14,6 +14,13 @@ public class NpcCombatProfile
     private int crushDefence;
     private int rangedDefence;
     private int magicDefence;
+    private int combatLevel;
+    private int maxHit;
+    private boolean aggressive;
+    private String attackType;
+    private String wikiWeakness;
+    private int elementalWeaknessPercent;
+    private String dataSource;
 
     public NpcCombatProfile()
     {
@@ -105,6 +112,86 @@ public class NpcCombatProfile
         this.magicDefence = magicDefence;
     }
 
+    public int getCombatLevel()
+    {
+        return combatLevel;
+    }
+
+    public void setCombatLevel(int combatLevel)
+    {
+        this.combatLevel = combatLevel;
+    }
+
+    public int getMaxHit()
+    {
+        return maxHit;
+    }
+
+    public void setMaxHit(int maxHit)
+    {
+        this.maxHit = maxHit;
+    }
+
+    public boolean isAggressive()
+    {
+        return aggressive;
+    }
+
+    public void setAggressive(boolean aggressive)
+    {
+        this.aggressive = aggressive;
+    }
+
+    public String getAttackType()
+    {
+        return attackType;
+    }
+
+    public void setAttackType(String attackType)
+    {
+        this.attackType = attackType;
+    }
+
+    public String getWikiWeakness()
+    {
+        return wikiWeakness;
+    }
+
+    public void setWikiWeakness(String wikiWeakness)
+    {
+        this.wikiWeakness = wikiWeakness;
+    }
+
+    public int getElementalWeaknessPercent()
+    {
+        return elementalWeaknessPercent;
+    }
+
+    public void setElementalWeaknessPercent(int elementalWeaknessPercent)
+    {
+        this.elementalWeaknessPercent = elementalWeaknessPercent;
+    }
+
+    public String getDataSource()
+    {
+        return dataSource;
+    }
+
+    public void setDataSource(String dataSource)
+    {
+        this.dataSource = dataSource;
+    }
+
+    public boolean hasWikiWeakness()
+    {
+        return wikiWeakness != null && !wikiWeakness.trim().isEmpty();
+    }
+
+    public boolean hasThreatData()
+    {
+        return combatLevel > 0 || maxHit > 0 || aggressive || hasText(attackType);
+    }
+
     /**
      * Gets the appropriate defence bonus based on attack subtype.
      */
@@ -125,5 +212,10 @@ public class NpcCombatProfile
             default:
                 return 0;
         }
+    }
+
+    private boolean hasText(String value)
+    {
+        return value != null && !value.trim().isEmpty();
     }
 }

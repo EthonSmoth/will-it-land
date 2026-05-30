@@ -57,6 +57,39 @@ public class CombatCalculatorTest
         assertTrue("Hit chance should be reasonable", result.getHitChance() > 0.5);
     }
 
+    @Test
+    public void accurateStyleAddsThreeLevelsToMeleeAccuracy()
+    {
+        CombatProfile profile = new CombatProfile();
+        profile.setCombatType(CombatType.MELEE);
+        profile.setAttackSubType(AttackSubType.STAB);
+        profile.setEffectiveAttackLevel(30);
+        profile.setAccuracyStyleBonus(3);
+        profile.setAttackBonus(0);
+        profile.setEffectiveStrengthLevel(30);
+
+        CombatResult result = calculator.calculateMeleeAccuracy(profile, gemstoneCrab());
+
+        assertEquals(2624, result.getOffensiveRoll());
+    }
+
+    @Test
+    public void aggressiveStyleAddsThreeLevelsToMeleeMaxHit()
+    {
+        CombatProfile profile = new CombatProfile();
+        profile.setCombatType(CombatType.MELEE);
+        profile.setAttackSubType(AttackSubType.CRUSH);
+        profile.setEffectiveAttackLevel(30);
+        profile.setEffectiveStrengthLevel(30);
+        profile.setStrengthStyleBonus(3);
+        profile.setAttackBonus(0);
+        profile.setStrengthBonus(0);
+
+        CombatResult result = calculator.calculateMeleeAccuracy(profile, gemstoneCrab());
+
+        assertEquals(4, result.getMaxHit());
+    }
+
     /**
      * Test ranged accuracy calculation.
      */
@@ -160,6 +193,48 @@ public class CombatCalculatorTest
 
         assertEquals("Magic damage bonus should increase spell max hit after base spell damage",
                 13, result.getMaxHit());
+    }
+
+    @Test
+    public void matchingElementalWeaknessAddsSpellDamageAfterMagicDamage()
+    {
+        CombatProfile profile = new CombatProfile();
+        profile.setCombatType(CombatType.MAGIC);
+        profile.setAttackSubType(AttackSubType.MAGIC);
+        profile.setEffectiveAttackLevel(35);
+        profile.setAttackBonus(0);
+        profile.setMagicDamageBonus(10);
+        profile.setMaxHitBase(12);
+        profile.setSpellElement("fire");
+
+        NpcCombatProfile npcProfile = gemstoneCrab();
+        npcProfile.setWikiWeakness("fire");
+        npcProfile.setElementalWeaknessPercent(50);
+
+        CombatResult result = calculator.calculateMagicAccuracy(profile, npcProfile);
+
+        assertEquals(19, result.getMaxHit());
+    }
+
+    @Test
+    public void nonMatchingElementalWeaknessDoesNotAddSpellDamage()
+    {
+        CombatProfile profile = new CombatProfile();
+        profile.setCombatType(CombatType.MAGIC);
+        profile.setAttackSubType(AttackSubType.MAGIC);
+        profile.setEffectiveAttackLevel(35);
+        profile.setAttackBonus(0);
+        profile.setMagicDamageBonus(0);
+        profile.setMaxHitBase(12);
+        profile.setSpellElement("fire");
+
+        NpcCombatProfile npcProfile = gemstoneCrab();
+        npcProfile.setWikiWeakness("water");
+        npcProfile.setElementalWeaknessPercent(50);
+
+        CombatResult result = calculator.calculateMagicAccuracy(profile, npcProfile);
+
+        assertEquals(12, result.getMaxHit());
     }
 
     /**

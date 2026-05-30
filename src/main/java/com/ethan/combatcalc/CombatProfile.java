@@ -15,6 +15,10 @@ public class CombatProfile
     private int rangedStrengthBonus;
     private int magicDamageBonus;
     private int maxHitBase;
+    private int accuracyStyleBonus;
+    private int strengthStyleBonus;
+    private int rangedStrengthStyleBonus;
+    private String spellElement;
 
     public CombatProfile()
     {
@@ -111,5 +115,45 @@ public class CombatProfile
     public void setMaxHitBase(int maxHitBase)
     {
         this.maxHitBase = maxHitBase;
+    }
+
+    public int getAccuracyStyleBonus()
+    {
+        return accuracyStyleBonus;
+    }
+
+    public void setAccuracyStyleBonus(int accuracyStyleBonus)
+    {
+        this.accuracyStyleBonus = accuracyStyleBonus;
+    }
+
+    public int getStrengthStyleBonus()
+    {
+        return strengthStyleBonus;
+    }
+
+    public void setStrengthStyleBonus(int strengthStyleBonus)
+    {
+        this.strengthStyleBonus = strengthStyleBonus;
+    }
+
+    public int getRangedStrengthStyleBonus()
+    {
+        return rangedStrengthStyleBonus;
+    }
+
+    public void setRangedStrengthStyleBonus(int rangedStrengthStyleBonus)
+    {
+        this.rangedStrengthStyleBonus = rangedStrengthStyleBonus;
+    }
+
+    public String getSpellElement()
+    {
+        return spellElement;
+    }
+
+    public void setSpellElement(String spellElement)
+    {
+        this.spellElement = spellElement;
     }
 }

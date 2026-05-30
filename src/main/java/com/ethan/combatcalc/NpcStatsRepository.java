@@ -101,7 +101,25 @@ public class NpcStatsRepository
      */
     public boolean hasNpcProfile(String npcName)
     {
-        return npcStats.containsKey(npcName);
+        if (npcName == null || npcName.isEmpty())
+        {
+            return false;
+        }
+
+        if (npcStats.containsKey(npcName))
+        {
+            return true;
+        }
+
+        for (String name : npcStats.keySet())
+        {
+            if (name.equalsIgnoreCase(npcName))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

@@ -12,7 +12,7 @@ import javax.inject.Singleton;
  * ### How OSRS accuracy works (all three styles)
  *
  *   1. Compute an OFFENSIVE ROLL: effectiveLevel * (equipmentBonus + 64)
- *      where effectiveLevel includes the +8 baseline and any prayer multiplier.
+ *      where effectiveLevel includes prayer, stance bonus, and the +8 baseline.
  *
  *   2. Compute a DEFENSIVE ROLL for the NPC: (npcDefenceLevel + 9) * (defenceBonus + 64)
  *      For magic, the NPC’s magic level is used instead of its defence level.
@@ -23,8 +23,7 @@ import javax.inject.Singleton;
  *
  * ### Max hit
  *   Melee and ranged max hits are calculated here.
- *   Magic max hit is spell-dependent and not yet implemented — it requires knowing
- *   which spell or powered-staff the player is using.
+ *   Magic max hit uses a spell or powered-staff base max hit supplied by the caller.
  */
 @Singleton
 public class CombatCalculator
@@ -41,11 +40,11 @@ public class CombatCalculator
     /**
      * Calculates melee hit chance and max hit.
      *
-     * Offensive roll = (attackLevel + 64) * (attackBonus + 64)
+     * Offensive roll = effectiveAttackLevel * (attackBonus + 64)
      *   where attackBonus is the equipment bonus for the active sub-type
      *   (stab / slash / crush), chosen by the AttackStyleResolver.
      *
-     * Defensive roll = (npcDefenceLevel + 64) * (npcDefenceBonusForSubType + 64)
+     * Defensive roll = (npcDefenceLevel + 9) * (npcDefenceBonusForSubType + 64)
      *   The NPC defence bonus used is the one matching the player’s attack sub-type,
      *   e.g. stab attack reads the NPC’s stab defence stat.
      *
@@ -62,7 +61,8 @@ public class CombatCalculator
 
         int effectiveAttackLevel = calculateEffectiveLevel(
                 playerProfile.getEffectiveAttackLevel(),
-                combatModifier.getAccuracyPrayerMultiplier(CombatType.MELEE));
+                combatModifier.getAccuracyPrayerMultiplier(CombatType.MELEE),
+                playerProfile.getAccuracyStyleBonus());
         int offensiveRoll = effectiveAttackLevel * (playerProfile.getAttackBonus() + 64);
 
         // Apply special modifiers
@@ -83,6 +83,7 @@ public class CombatCalculator
         int maxHit = calculateMeleeMaxHit(
                 playerProfile.getEffectiveStrengthLevel(),
                 playerProfile.getStrengthBonus(),
+                playerProfile.getStrengthStyleBonus(),
                 combatModifier.getStrengthPrayerMultiplier(),
                 combatModifier.getDamageMultiplier(CombatType.MELEE, npcProfile));
         result.setMaxHit(maxHit);
@@ -93,8 +94,8 @@ public class CombatCalculator
     /**
      * Calculates ranged hit chance and max hit.
      *
-     * Offensive roll = (rangedLevel + 64) * (rangedAttackBonus + 64)
-     * Defensive roll = (npcDefenceLevel + 64) * (npcRangedDefence + 64)
+     * Offensive roll = effectiveRangedLevel * (rangedAttackBonus + 64)
+     * Defensive roll = (npcDefenceLevel + 9) * (npcRangedDefence + 64)
      *
      * Max hit uses the ranged strength formula (see calculateRangedMaxHit).
      */
@@ -106,7 +107,8 @@ public class CombatCalculator
 
         int effectiveRangedLevel = calculateEffectiveLevel(
                 playerProfile.getEffectiveAttackLevel(),
-                combatModifier.getAccuracyPrayerMultiplier(CombatType.RANGED));
+                combatModifier.getAccuracyPrayerMultiplier(CombatType.RANGED),
+                playerProfile.getAccuracyStyleBonus());
         int offensiveRoll = effectiveRangedLevel * (playerProfile.getAttackBonus() + 64);
 
         // Apply special modifiers
@@ -126,6 +128,7 @@ public class CombatCalculator
         int maxHit = calculateRangedMaxHit(
                 playerProfile.getEffectiveAttackLevel(),
                 playerProfile.getRangedStrengthBonus(),
+                playerProfile.getRangedStrengthStyleBonus(),
                 combatModifier.getRangedStrengthPrayerMultiplier(),
                 combatModifier.getDamageMultiplier(CombatType.RANGED, npcProfile));
         result.setMaxHit(maxHit);
@@ -136,14 +139,13 @@ public class CombatCalculator
     /**
      * Calculates magic hit chance (PvM only).
      *
-     * Offensive roll = (magicLevel + 64) * (magicAttackBonus + 64)
+     * Offensive roll = effectiveMagicLevel * (magicAttackBonus + 64)
      *
      * PvM defensive roll uses the NPC’s MAGIC LEVEL (not defence level) as the
      * base stat, combined with the NPC’s magic defence bonus:
-     *   Defensive roll = (npcMagicLevel + 64) * (npcMagicDefence + 64)
+     *   Defensive roll = (npcMagicLevel + 9) * (npcMagicDefence + 64)
      *
-     * Magic max hit is spell-dependent and is not set here — it requires knowing
-     * the active spell or powered staff, which varies too much to generalise.
+     * Magic max hit is spell-dependent and uses the caller-provided base max hit.
      */
     public CombatResult calculateMagicAccuracy(CombatProfile playerProfile, NpcCombatProfile npcProfile)
     {
@@ -153,7 +155,8 @@ public class CombatCalculator
 
         int effectiveMagicLevel = calculateEffectiveLevel(
                 playerProfile.getEffectiveAttackLevel(),
-                combatModifier.getAccuracyPrayerMultiplier(CombatType.MAGIC));
+                combatModifier.getAccuracyPrayerMultiplier(CombatType.MAGIC),
+                playerProfile.getAccuracyStyleBonus());
         int offensiveRoll = effectiveMagicLevel * (playerProfile.getAttackBonus() + 64);
 
         // Apply special modifiers
@@ -172,7 +175,8 @@ public class CombatCalculator
         int maxHit = calculateMagicMaxHit(
                 playerProfile.getMaxHitBase(),
                 playerProfile.getMagicDamageBonus(),
-                combatModifier.getDamageMultiplier(CombatType.MAGIC, npcProfile));
+                combatModifier.getDamageMultiplier(CombatType.MAGIC, npcProfile),
+                getElementalWeaknessBonus(playerProfile, npcProfile));
         result.setMaxHit(maxHit);
 
         return result;
@@ -222,12 +226,17 @@ public class CombatCalculator
      */
     public int calculateMeleeMaxHit(int strengthLevel, int strengthBonus)
     {
-        return calculateMeleeMaxHit(strengthLevel, strengthBonus, 1.0, 1.0);
+        return calculateMeleeMaxHit(strengthLevel, strengthBonus, 0, 1.0, 1.0);
     }
 
     public int calculateMeleeMaxHit(int strengthLevel, int strengthBonus, double prayerMultiplier, double damageMultiplier)
     {
-        int effectiveStrength = calculateEffectiveLevel(strengthLevel, prayerMultiplier);
+        return calculateMeleeMaxHit(strengthLevel, strengthBonus, 0, prayerMultiplier, damageMultiplier);
+    }
+
+    public int calculateMeleeMaxHit(int strengthLevel, int strengthBonus, int styleBonus, double prayerMultiplier, double damageMultiplier)
+    {
+        int effectiveStrength = calculateEffectiveLevel(strengthLevel, prayerMultiplier, styleBonus);
         int baseMaxHit = (int) Math.floor(0.5 + effectiveStrength * (strengthBonus + 64) / 640.0);
         return (int) Math.floor(baseMaxHit * damageMultiplier);
     }
@@ -235,24 +244,34 @@ public class CombatCalculator
     /**
      * Ranged max hit formula.
      *
-     *   maxHit = floor( 1.3 + rangedLevel * (rangedStrengthBonus + 64) / 64 )
+     *   maxHit = floor( 1.3 + rangedLevel * (rangedStrengthBonus + 64) / 640 )
      *
      * rangedLevel          — effective ranged level (boosted).
      * rangedStrengthBonus  — the ranged strength bonus from equipped ammunition/weapon.
      */
     public int calculateRangedMaxHit(int rangedLevel, int rangedStrengthBonus)
     {
-        return calculateRangedMaxHit(rangedLevel, rangedStrengthBonus, 1.0, 1.0);
+        return calculateRangedMaxHit(rangedLevel, rangedStrengthBonus, 0, 1.0, 1.0);
     }
 
     public int calculateRangedMaxHit(int rangedLevel, int rangedStrengthBonus, double prayerMultiplier, double damageMultiplier)
     {
-        int effectiveRangedStrength = calculateEffectiveLevel(rangedLevel, prayerMultiplier);
+        return calculateRangedMaxHit(rangedLevel, rangedStrengthBonus, 0, prayerMultiplier, damageMultiplier);
+    }
+
+    public int calculateRangedMaxHit(int rangedLevel, int rangedStrengthBonus, int styleBonus, double prayerMultiplier, double damageMultiplier)
+    {
+        int effectiveRangedStrength = calculateEffectiveLevel(rangedLevel, prayerMultiplier, styleBonus);
         int baseMaxHit = (int) Math.floor(1.3 + effectiveRangedStrength * (rangedStrengthBonus + 64) / 640.0);
         return (int) Math.floor(baseMaxHit * damageMultiplier);
     }
 
     public int calculateMagicMaxHit(int baseMaxHit, int magicDamageBonus, double damageMultiplier)
+    {
+        return calculateMagicMaxHit(baseMaxHit, magicDamageBonus, damageMultiplier, 0);
+    }
+
+    public int calculateMagicMaxHit(int baseMaxHit, int magicDamageBonus, double damageMultiplier, int elementalWeaknessPercent)
     {
         if (baseMaxHit <= 0)
         {
@@ -260,12 +279,34 @@ public class CombatCalculator
         }
 
         double gearMultiplier = 1.0 + (magicDamageBonus / 100.0);
-        return (int) Math.floor(baseMaxHit * gearMultiplier * damageMultiplier);
+        int boostedHit = (int) Math.floor(baseMaxHit * gearMultiplier * damageMultiplier);
+        int elementalBonus = (int) Math.floor(baseMaxHit * elementalWeaknessPercent / 100.0);
+        return boostedHit + elementalBonus;
+    }
+
+    private int getElementalWeaknessBonus(CombatProfile playerProfile, NpcCombatProfile npcProfile)
+    {
+        if (playerProfile.getSpellElement() == null || npcProfile.getWikiWeakness() == null)
+        {
+            return 0;
+        }
+
+        if (!playerProfile.getSpellElement().equalsIgnoreCase(npcProfile.getWikiWeakness()))
+        {
+            return 0;
+        }
+
+        return Math.max(0, npcProfile.getElementalWeaknessPercent());
     }
 
     private int calculateEffectiveLevel(int boostedLevel, double prayerMultiplier)
     {
-        return (int) Math.floor(boostedLevel * prayerMultiplier) + 8;
+        return calculateEffectiveLevel(boostedLevel, prayerMultiplier, 0);
+    }
+
+    private int calculateEffectiveLevel(int boostedLevel, double prayerMultiplier, int styleBonus)
+    {
+        return (int) Math.floor(boostedLevel * prayerMultiplier) + styleBonus + 8;
     }
 
     private int calculateNpcDefensiveRoll(int npcLevel, int defenceBonus)

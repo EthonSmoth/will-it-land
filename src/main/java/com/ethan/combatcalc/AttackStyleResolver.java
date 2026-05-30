@@ -21,9 +21,8 @@ import javax.inject.Singleton;
  *     - If the equipped weapon is in the hardcoded ranged-weapon list → RANGED.
  *     - Otherwise → MELEE.
  *
- *   Note: powered staves (Trident, Sanguinesti, etc.) are listed in isStaff() and
- *   treated as melee for the purpose of CombatType detection; magic is only returned
- *   when an explicit spell is selected via VarPlayer 108.
+     *   Powered staves (Trident, Sanguinesti, Tumeken's shadow, etc.) are treated
+     *   as MAGIC even when no standard spell is selected.
  *
  * ### AttackSubType (STAB / SLASH / CRUSH / RANGED / MAGIC)
  *   For MELEE, the active attack style VarPlayer is mapped to a sub-type.
@@ -84,6 +83,12 @@ public class AttackStyleResolver
             return CombatType.MAGIC;
         }
 
+        Item weapon = equipment.getItem(EquipmentInventorySlot.WEAPON.getSlotIdx());
+        if (weapon != null && weapon.getId() != -1 && PoweredStaffMaxHitResolver.isPoweredStaff(weapon.getId()))
+        {
+            return CombatType.MAGIC;
+        }
+
         AttackSubType widgetSubType = resolveSubTypeFromCombatOptions(client);
         CombatType widgetCombatType = WeaponAttackStyles.combatTypeFor(widgetSubType);
         if (widgetCombatType != CombatType.UNKNOWN)
@@ -96,7 +101,6 @@ public class AttackStyleResolver
         if (attackStyle == 3)
         {
             // This could be ranged defensive stance or controlled
-            Item weapon = equipment.getItem(EquipmentInventorySlot.WEAPON.getSlotIdx());
             if (weapon != null && isRangedWeapon(weapon.getId()))
             {
                 return CombatType.RANGED;
@@ -104,7 +108,6 @@ public class AttackStyleResolver
         }
 
         // Check if weapon is ranged (bow, blowpipe, etc)
-        Item weapon = equipment.getItem(EquipmentInventorySlot.WEAPON.getSlotIdx());
         if (weapon != null && weapon.getId() != -1 && isRangedWeapon(weapon.getId()))
         {
             return CombatType.RANGED;

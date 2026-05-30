@@ -111,6 +111,11 @@ public class WillItLandOverlay extends OverlayPanel
             renderWeaponIntel(result.getWeaponInfo());
         }
 
+        if (config.showNpcThreatIntel())
+        {
+            renderNpcThreatIntel(plugin.getLatestNpcProfile(), plugin.getLatestWeaknessSummary());
+        }
+
         // Show warning if NPC stats were not found
         if (config.showNpcWarning() && result.isNpcUnknown())
         {
@@ -258,6 +263,88 @@ public class WillItLandOverlay extends OverlayPanel
         }
     }
 
+    private void renderNpcThreatIntel(NpcCombatProfile profile, WeaknessSummary summary)
+    {
+        if (profile == null && summary == null)
+        {
+            return;
+        }
+
+        panelComponent.getChildren().add(LineComponent.builder()
+                .left("")
+                .build());
+
+        if (profile != null)
+        {
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("NPC")
+                    .right(profile.getNpcName() == null ? "Unknown" : profile.getNpcName())
+                    .rightColor(new Color(255, 220, 120))
+                    .build());
+
+            if (profile.getCombatLevel() > 0)
+            {
+                panelComponent.getChildren().add(LineComponent.builder()
+                        .left("NPC level")
+                        .right(String.valueOf(profile.getCombatLevel()))
+                        .rightColor(new Color(220, 220, 220))
+                        .build());
+            }
+
+            if (profile.getMaxHit() > 0)
+            {
+                panelComponent.getChildren().add(LineComponent.builder()
+                        .left("NPC max")
+                        .right(String.valueOf(profile.getMaxHit()))
+                        .rightColor(new Color(255, 180, 180))
+                        .build());
+            }
+
+            if (profile.isAggressive())
+            {
+                panelComponent.getChildren().add(LineComponent.builder()
+                        .left("Aggressive")
+                        .right("yes")
+                        .rightColor(new Color(255, 180, 120))
+                        .build());
+            }
+        }
+
+        if (summary != null)
+        {
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Weakness")
+                    .right(formatWeakness(summary))
+                    .rightColor(new Color(255, 220, 120))
+                    .build());
+
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Weapon weak")
+                    .right(summary.getWeaponWeakness().getDisplayName())
+                    .rightColor(new Color(180, 220, 255))
+                    .build());
+
+            if (summary.hasRecommendation())
+            {
+                panelComponent.getChildren().add(LineComponent.builder()
+                        .left("Best inv")
+                        .right(summary.getRecommendedWeaponName())
+                        .rightColor(new Color(180, 255, 180))
+                        .build());
+            }
+        }
+    }
+
+    private String formatWeakness(WeaknessSummary summary)
+    {
+        String label = summary.getWeaknessLabel();
+        if (label == null || label.isEmpty())
+        {
+            label = summary.getDefensiveWeakness().getDisplayName();
+        }
+        return label + " (" + summary.getWeaknessSource() + ")";
+    }
+
 
 
     /**
@@ -323,7 +410,14 @@ public class WillItLandOverlay extends OverlayPanel
         }
 
         double averageHit = result.getMaxHit() / 2.0;
-        double dps = (averageHit * result.getHitChance()) / 2.4;
+        double attackSpeedSeconds = 2.4;
+        WeaponInfo weaponInfo = result.getWeaponInfo();
+        if (weaponInfo != null && weaponInfo.getAttackSpeedTicks() > 0)
+        {
+            attackSpeedSeconds = weaponInfo.getAttackSpeedTicks() * 0.6;
+        }
+
+        double dps = (averageHit * result.getHitChance()) / attackSpeedSeconds;
         return Math.round(dps * 100.0) / 100.0;
     }
 
@@ -333,15 +427,19 @@ public class WillItLandOverlay extends OverlayPanel
      */
     private Color getHitChanceColor(double hitChance)
     {
-        if (hitChance >= 0.80)
+        double highThreshold = config.colorHighAccuracy() / 100.0;
+        double mediumThreshold = config.colorMediumAccuracy() / 100.0;
+        double lowThreshold = config.colorLowAccuracy() / 100.0;
+
+        if (hitChance >= highThreshold)
         {
             return new Color(0, 255, 0); // Green
         }
-        else if (hitChance >= 0.50)
+        else if (hitChance >= mediumThreshold)
         {
             return new Color(255, 255, 0); // Yellow
         }
-        else if (hitChance >= 0.25)
+        else if (hitChance >= lowThreshold)
         {
             return new Color(255, 165, 0); // Orange
         }
