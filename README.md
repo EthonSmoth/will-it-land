@@ -13,7 +13,7 @@ The current implementation is focused on transparent, OSRS-style combat rolls fo
 - Config wiring: prayer bonuses, special modifiers, and equipment set effects are now gated by their feature toggles.
 - Slayer wiring: Slayer helmet bonuses use RuneLite's current Slayer task varps/DB rows when a task is active, and do not stack with Salve bonuses.
 - Test status: `./gradlew.bat test` passes locally.
-- Git status at this README update: the DexHonsa-style overlay merge is partially implemented in this architecture, with wiki weakness source support and regression tests ready for review.
+- Plugin Hub status: latest update PR is tracked at https://github.com/runelite/plugin-hub/pull/12302.
 
 ## Features
 
@@ -56,7 +56,7 @@ Standard spell max hits currently wired:
 - Wave spells
 - Surge spells
 
-Powered staves and special-case spell systems are not fully modeled yet.
+Powered staves with common built-in spell formulas are modeled separately from standard spellbook casts.
 
 ### Modifiers
 
@@ -134,6 +134,9 @@ src/main/java/com/ethan/combatcalc/
 +-- CombatCalculator.java          Hit chance and max-hit engine
 +-- CombatModifier.java            Prayer, Salve, special, and set multipliers
 +-- EquipmentSynergyDetector.java  Void/Obsidian set detection
++-- PoweredStaffMaxHitResolver.java Powered staff max-hit resolver
++-- SlayerTaskProvider.java        Slayer task source abstraction
++-- RuneLiteSlayerTaskProvider.java RuneLite varp/DB-backed Slayer task source
 +-- NpcStatsRepository.java        NPC stats loader
 +-- NpcCombatProfile.java          NPC combat stat model
 +-- CombatProfile.java             Player combat stat model
@@ -158,6 +161,7 @@ src/test/java/com/ethan/combatcalc/
 +-- WeaponAttackStylesTest.java    Attack-style mapping tests
 +-- WeaponInfoTest.java            Weapon info formatting tests
 +-- WeaponIntelDatabaseTest.java   Weapon intel tests
++-- WillItLandOverlayTest.java     Overlay DPS/color threshold tests
 +-- WillItLandPluginTest.java      Config provider wiring test
 ```
 
@@ -223,6 +227,63 @@ Manual local testing:
 3. For normal RuneLite plugin distribution, package/release according to RuneLite external plugin requirements.
 
 Plugin Hub submission/update PR: https://github.com/runelite/plugin-hub/pull/12302
+
+## Plugin Hub Maintenance
+
+Useful RuneLite links:
+
+- Plugin Hub repo: https://github.com/runelite/plugin-hub
+- Plugin Hub user/developer info: https://github.com/runelite/runelite/wiki/Information-about-the-Plugin-Hub
+- RuneLite developer guide: https://github.com/runelite/runelite/wiki/Developer-Guide
+- RuneLite API Javadocs: https://static.runelite.net/api/runelite-api/
+- RuneLite client Javadocs: https://static.runelite.net/api/runelite-client/
+- Live Plugin Hub listing: https://runelite.net/plugin-hub
+
+Update flow for this plugin:
+
+1. Make and test changes in this repository.
+2. Push the plugin repository commit.
+3. In `runelite/plugin-hub`, update `plugins/will-it-land` so `commit=` points at the full 40-character plugin commit hash.
+4. Open or update a Plugin Hub PR against `runelite/plugin-hub:master`.
+5. Watch both Plugin Hub CI jobs. If Plugin Hub asks for changes, fix the plugin repo, push a new plugin commit, then update `commit=` again in the same Plugin Hub PR.
+
+Plugin Hub notes to keep in mind:
+
+- External plugins are community maintained and reviewed for Jagex rule compliance and safety, but RuneLite does not guarantee they work forever.
+- Plugin resources must live in `src/main/resources` and should be loaded with `getResourceAsStream`, because Plugin Hub distributes plugins as jars.
+- Avoid new third-party dependencies unless necessary; Plugin Hub requires dependency verification for non-transitive dependencies.
+- Keep `runeLiteVersion = 'latest.release'` in `build.gradle` so the plugin tracks current RuneLite API releases.
+- Keep README feature notes and limitations current because Plugin Hub recommends a clear README for users.
+
+## Formula And Data References
+
+Wiki is king for combat formulas and NPC data. When changing calculator behavior or `npc_stats.json`, start with these pages and add/update regression tests in the same commit:
+
+- Chance to hit: https://oldschool.runescape.wiki/w/Chance_to_hit
+- Magic accuracy: https://oldschool.runescape.wiki/w/Magic_accuracy
+- Maximum melee hit: https://oldschool.runescape.wiki/w/Maximum_melee_hit
+- Maximum ranged hit: https://oldschool.runescape.wiki/w/Maximum_ranged_hit
+- Maximum magic hit: https://oldschool.runescape.wiki/w/Maximum_magic_hit
+- Magic damage: https://oldschool.runescape.wiki/w/Magic_damage
+- Elemental weakness: https://oldschool.runescape.wiki/w/Elemental_weakness
+- Damage per second, melee reference: https://oldschool.runescape.wiki/w/Damage_per_second/Melee
+- Salve amulet (ei): https://oldschool.runescape.wiki/w/Salve_amulet%28ei%29
+- Slayer helmet: https://oldschool.runescape.wiki/w/Slayer_helmet
+- OSRS Wiki DPS calculator: https://tools.runescape.wiki/osrs-dps/
+
+Current NPC data starter pages:
+
+- Gemstone Crab: https://oldschool.runescape.wiki/w/Gemstone_Crab
+- Blue dragon: https://oldschool.runescape.wiki/w/Blue_dragon
+- Hill Giant: https://oldschool.runescape.wiki/w/Hill_Giant
+- Abyssal demon: https://oldschool.runescape.wiki/w/Abyssal_demon
+
+Data maintenance rules:
+
+- Prefer explicit `dataSource` values such as `osrs-wiki`.
+- Add `wikiWeakness` and `elementalWeaknessPercent` only when a wiki page supports it.
+- Keep formula-sensitive examples covered by tests before changing calculator logic.
+- Treat local values as a curated cache, not a replacement for the OSRS Wiki.
 
 ## Accuracy Notes
 
