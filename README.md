@@ -222,7 +222,7 @@ Manual local testing:
 2. Run through the Gradle `run` task for developer-mode testing.
 3. For normal RuneLite plugin distribution, package/release according to RuneLite external plugin requirements.
 
-Plugin Hub submission/update PR: https://github.com/runelite/plugin-hub/pull/12295
+Plugin Hub submission/update PR: https://github.com/runelite/plugin-hub/pull/12302
 
 ## Accuracy Notes
 
