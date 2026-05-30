@@ -76,6 +76,9 @@ public class WillItLandPlugin extends Plugin
     private WillItLandOverlay overlay;
 
     @Inject
+    private TargetWeaknessOverlay targetWeaknessOverlay;
+
+    @Inject
     private WillItLandConfig config;
 
     @Inject
@@ -93,7 +96,15 @@ public class WillItLandPlugin extends Plugin
     @Inject
     private NpcStatsRepository npcStatsRepository;
 
+    @Inject
+    private InventoryWeaponCollector inventoryWeaponCollector;
+
+    @Inject
+    private WeaknessAnalyzer weaknessAnalyzer;
+
     private CombatResult latestResult = new CombatResult();
+    private NPC currentTargetNpc;
+    private WeaknessSummary latestWeaknessSummary;
 
     public CombatResult getLatestResult()
     {
@@ -103,6 +114,16 @@ public class WillItLandPlugin extends Plugin
     public WillItLandConfig getConfig()
     {
         return config;
+    }
+
+    public NPC getCurrentTargetNpc()
+    {
+        return currentTargetNpc;
+    }
+
+    public WeaknessSummary getLatestWeaknessSummary()
+    {
+        return latestWeaknessSummary;
     }
 
     @Provides
@@ -116,6 +137,7 @@ public class WillItLandPlugin extends Plugin
     {
         // Register the overlay so it is drawn on screen.
         overlayManager.add(overlay);
+        overlayManager.add(targetWeaknessOverlay);
     }
 
     @Override
@@ -123,7 +145,10 @@ public class WillItLandPlugin extends Plugin
     {
         // Remove the overlay and reset state so nothing lingers after the plugin is disabled.
         overlayManager.remove(overlay);
+        overlayManager.remove(targetWeaknessOverlay);
         latestResult = new CombatResult();
+        currentTargetNpc = null;
+        latestWeaknessSummary = null;
     }
 
     /**
@@ -161,8 +186,12 @@ public class WillItLandPlugin extends Plugin
         if (targetNpc == null)
         {
             latestResult = new CombatResult();
+            currentTargetNpc = null;
+            latestWeaknessSummary = null;
             return;
         }
+
+        currentTargetNpc = targetNpc;
 
         // Resolve combat type and subtype
         CombatType combatType = attackStyleResolver.resolveCombatType(client);
@@ -174,6 +203,7 @@ public class WillItLandPlugin extends Plugin
 
         // Build NPC combat profile
         NpcCombatProfile npcProfile = npcStatsRepository.getNpcProfile(targetNpc.getName());
+        latestWeaknessSummary = weaknessAnalyzer.analyze(npcProfile, inventoryWeaponCollector.collectCandidates());
 
         // Check if NPC was found in database
         boolean npcFound = npcStatsRepository.hasNpcProfile(targetNpc.getName());

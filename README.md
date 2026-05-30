@@ -8,9 +8,10 @@ The current implementation is focused on transparent, OSRS-style combat rolls fo
 
 - Main plugin wiring: `WillItLandPlugin` registers the overlay, reads the local player target, resolves combat type/subtype, collects gear stats, loads NPC stats, and stores the latest `CombatResult`.
 - Overlay wiring: `WillItLandOverlay` reads `latestResult` and honors display toggles for attack style, hit chance, max hit, DPS, NPC warnings, debug info, and weapon intel.
+- Target weakness wiring: `TargetWeaknessOverlay` renders the current NPC's defensive weakness, melee weapon weakness, and best matching inventory/equipped weapon above the target.
 - Config wiring: prayer bonuses, special modifiers, and equipment set effects are now gated by their feature toggles.
 - Test status: `./gradlew.bat test` passes locally.
-- Git status at this README update: README, combat calculator/modifier/plugin wiring, equipment stat collection, and tests are modified locally; no commit has been made.
+- Git status at this README update: target weakness overlay, inventory weapon recommendation, and documentation changes are ready for the next commit.
 
 ## Features
 
@@ -19,6 +20,7 @@ The current implementation is focused on transparent, OSRS-style combat rolls fo
 - Shows while your player is targeting an NPC.
 - Displays combat style, hit chance, max hit, and estimated DPS when enabled.
 - Includes optional weapon intel rows for weapon bonuses, speed, range, ammo, special attack notes, passive effects, and raw offensive bonuses.
+- Includes an optional above-target weakness overlay showing `DEF`, `WEAP`, and `BEST` recommendation lines.
 - Can show debug roll details for troubleshooting.
 - Shows a warning when the target NPC is missing from the local stats database.
 
@@ -65,6 +67,18 @@ Implemented modifier support includes:
 
 Known limitation: Slayer helmet task detection is still a placeholder and does not apply until task detection is implemented.
 
+### Target Weakness Overlay
+
+When enabled, the plugin renders a compact label above the NPC you are fighting:
+
+- `DEF`: the target's lowest overall defensive stat across stab, slash, crush, ranged, and magic.
+- `WEAP`: the target's lowest melee weapon defence across stab, slash, and crush.
+- `BEST`: the best matching weapon found in your equipped weapon slot or inventory.
+
+The recommendation uses RuneLite item stats and scores weapons against the target's weakest style. If the overall weakness is magic or ranged but no matching inventory weapon is found, it falls back to the best melee weapon for the target's melee weapon weakness.
+
+Known limitation: recommendations are stat-based and do not yet account for ammo availability, special attacks, monster-specific passives, or exact attack speed DPS.
+
 ### NPC Data
 
 NPC stats are loaded from `src/main/resources/npc_stats.json`.
@@ -86,6 +100,7 @@ Unknown NPCs use fallback/default stats and can show an overlay warning.
 src/main/java/com/ethan/combatcalc/
 +-- WillItLandPlugin.java          Main plugin entry and tick pipeline
 +-- WillItLandOverlay.java         Overlay renderer
++-- TargetWeaknessOverlay.java     Above-target weakness/recommendation renderer
 +-- WillItLandConfig.java          RuneLite config toggles
 +-- AttackStyleResolver.java       Combat type/subtype resolver
 +-- EquipmentStatCollector.java    Equipment bonus collector
@@ -97,6 +112,9 @@ src/main/java/com/ethan/combatcalc/
 +-- CombatProfile.java             Player combat stat model
 +-- CombatResult.java              Calculation result model
 +-- WeaponInfoCollector.java       Weapon stat/intel collector
++-- InventoryWeaponCollector.java  Inventory/equipment weapon candidates
++-- WeaknessAnalyzer.java          NPC weakness and weapon recommendation logic
++-- WeaknessSummary.java           Weakness overlay data model
 +-- WeaponInfo.java                Weapon info model
 +-- WeaponIntelDatabase.java       Known weapon notes and effects
 
@@ -106,6 +124,7 @@ src/main/resources/
 src/test/java/com/ethan/combatcalc/
 +-- CombatCalculatorTest.java      Formula and crab regression tests
 +-- CombatModifierTest.java        Prayer/Salve/config toggle tests
++-- WeaknessAnalyzerTest.java      Defensive weakness and recommendation tests
 +-- WeaponAttackStylesTest.java    Attack-style mapping tests
 +-- WeaponInfoTest.java            Weapon info formatting tests
 +-- WeaponIntelDatabaseTest.java   Weapon intel tests
@@ -124,6 +143,7 @@ Current test coverage includes:
 - Salve/Salve(ei) undead-only behavior.
 - Prayer multipliers for melee, ranged, and magic.
 - Config toggles for prayer and special modifiers.
+- Defensive weakness detection and inventory weapon recommendations.
 - Weapon info and attack-style mapping.
 
 Run all tests:
@@ -177,6 +197,7 @@ The calculator is intentionally conservative and test-backed for the currently w
 - Spell-specific special cases beyond standard spell base damage and Chaos gauntlets.
 - Slayer task detection for Slayer helmet bonuses.
 - Exact weapon attack speeds for DPS.
+- Recommendation scoring that accounts for ammo, special attacks, monster-specific passives, or exact DPS.
 - Large NPC database coverage beyond the bundled sample data.
 
 ## Disclaimer

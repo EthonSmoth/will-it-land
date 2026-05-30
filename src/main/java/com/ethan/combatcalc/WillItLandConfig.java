@@ -225,6 +225,18 @@ public interface WillItLandConfig extends Config
         return true;
     }
 
+    @ConfigItem(
+            keyName = "showTargetWeaknessOverlay",
+            name = "Show Target Weakness",
+            description = "Display defensive weakness and best inventory weapon above your target",
+            section = debugSection,
+            position = 2
+    )
+    default boolean showTargetWeaknessOverlay()
+    {
+        return true;
+    }
+
     @ConfigSection(
             name = "Visual Settings",
             description = "Customize appearance",
