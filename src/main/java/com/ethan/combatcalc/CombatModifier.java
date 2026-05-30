@@ -4,6 +4,7 @@ import net.runelite.api.Client;
 import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.api.InventoryID;
 import net.runelite.api.Item;
+import net.runelite.api.ItemID;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.Prayer;
 import net.runelite.api.Skill;
@@ -29,11 +30,20 @@ import javax.inject.Singleton;
 public class CombatModifier
 {
     private final Client client;
+    private final WillItLandConfig config;
+    private final EquipmentSynergyDetector equipmentSynergyDetector;
 
     @Inject
-    public CombatModifier(Client client)
+    public CombatModifier(Client client, WillItLandConfig config, EquipmentSynergyDetector equipmentSynergyDetector)
     {
         this.client = client;
+        this.config = config;
+        this.equipmentSynergyDetector = equipmentSynergyDetector;
+    }
+
+    public CombatModifier(Client client)
+    {
+        this(client, null, null);
     }
 
     /**
@@ -50,28 +60,129 @@ public class CombatModifier
     {
         double multiplier = 1.0;
 
-        // Salve amulet bonus (15% to melee accuracy and damage vs undead)
-        if (wearingSalveAmulet() && isUndeadNPC(npcProfile))
+        if (specialModifiersEnabled() && isSalveAccuracyApplicable(combatType, npcProfile))
         {
-            multiplier *= 1.15;
+            multiplier *= getSalveMultiplier(combatType);
         }
 
         // Slayer helmet bonus (15% to melee accuracy on task)
-        if ((wearingSlayerHelm() || wearingImbueSlayerHelm()) && isOnSlayerTask(npcProfile))
+        if (specialModifiersEnabled() && (wearingSlayerHelm() || wearingImbueSlayerHelm()) && isOnSlayerTask(npcProfile))
         {
             multiplier *= 1.15;
         }
 
         // Magic amulet bonuses (+10% magic accuracy)
-        if (combatType == CombatType.MAGIC && wearingMagicAmulet())
+        if (specialModifiersEnabled() && combatType == CombatType.MAGIC && wearingMagicAmulet())
         {
             multiplier *= 1.10;
         }
 
-        // Prayer bonuses
-        multiplier *= getPrayerAccuracyMultiplier(combatType);
+        if (equipmentSetsEnabled() && equipmentSynergyDetector != null)
+        {
+            multiplier *= equipmentSynergyDetector.getSetEffectAccuracyMultiplier(combatType);
+        }
 
         return multiplier;
+    }
+
+    public double getDamageMultiplier(CombatType combatType, NpcCombatProfile npcProfile)
+    {
+        double multiplier = 1.0;
+
+        if (specialModifiersEnabled() && isSalveAccuracyApplicable(combatType, npcProfile))
+        {
+            multiplier *= getSalveMultiplier(combatType);
+        }
+
+        if (equipmentSetsEnabled() && equipmentSynergyDetector != null)
+        {
+            multiplier *= equipmentSynergyDetector.getSetEffectDamageMultiplier(combatType);
+        }
+
+        return multiplier;
+    }
+
+    public double getAccuracyPrayerMultiplier(CombatType combatType)
+    {
+        if (!prayerBonusesEnabled())
+        {
+            return 1.0;
+        }
+
+        return getPrayerAccuracyMultiplier(combatType);
+    }
+
+    public double getStrengthPrayerMultiplier()
+    {
+        if (client == null || !prayerBonusesEnabled())
+        {
+            return 1.0;
+        }
+
+        if (client.isPrayerActive(Prayer.PIETY))
+        {
+            return 1.23;
+        }
+        if (client.isPrayerActive(Prayer.CHIVALRY))
+        {
+            return 1.18;
+        }
+        if (client.isPrayerActive(Prayer.ULTIMATE_STRENGTH))
+        {
+            return 1.15;
+        }
+        if (client.isPrayerActive(Prayer.SUPERHUMAN_STRENGTH))
+        {
+            return 1.10;
+        }
+        if (client.isPrayerActive(Prayer.BURST_OF_STRENGTH))
+        {
+            return 1.05;
+        }
+
+        return 1.0;
+    }
+
+    public double getRangedStrengthPrayerMultiplier()
+    {
+        if (client == null || !prayerBonusesEnabled())
+        {
+            return 1.0;
+        }
+
+        if (client.isPrayerActive(Prayer.RIGOUR))
+        {
+            return 1.23;
+        }
+        if (client.isPrayerActive(Prayer.EAGLE_EYE))
+        {
+            return 1.15;
+        }
+        if (client.isPrayerActive(Prayer.HAWK_EYE))
+        {
+            return 1.10;
+        }
+        if (client.isPrayerActive(Prayer.SHARP_EYE))
+        {
+            return 1.05;
+        }
+
+        return 1.0;
+    }
+
+    private boolean prayerBonusesEnabled()
+    {
+        return config == null || config.enablePrayerBonuses();
+    }
+
+    private boolean specialModifiersEnabled()
+    {
+        return config == null || config.enableSpecialModifiers();
+    }
+
+    private boolean equipmentSetsEnabled()
+    {
+        return config == null || config.enableEquipmentSets();
     }
 
     /**
@@ -87,6 +198,11 @@ public class CombatModifier
      */
     private double getPrayerAccuracyMultiplier(CombatType combatType)
     {
+        if (client == null)
+        {
+            return 1.0;
+        }
+
         switch (combatType)
         {
             case MELEE:
@@ -159,24 +275,74 @@ public class CombatModifier
      */
     private boolean wearingSalveAmulet()
     {
-        ItemContainer equipment = client.getItemContainer(InventoryID.EQUIPMENT);
+        int amuletId = getEquippedAmuletId();
+        return amuletId == ItemID.SALVE_AMULET ||
+                amuletId == ItemID.SALVE_AMULET_E ||
+                amuletId == ItemID.SALVE_AMULETI ||
+                amuletId == ItemID.SALVE_AMULETEI ||
+                amuletId == ItemID.SALVE_AMULETI_25250 ||
+                amuletId == ItemID.SALVE_AMULETEI_25278 ||
+                amuletId == ItemID.SALVE_AMULETI_26763 ||
+                amuletId == ItemID.SALVE_AMULETEI_26782;
+    }
+
+    private boolean isSalveAccuracyApplicable(CombatType combatType, NpcCombatProfile npcProfile)
+    {
+        return wearingSalveAmulet() && isUndeadNPC(npcProfile) && getSalveMultiplier(combatType) > 1.0;
+    }
+
+    private double getSalveMultiplier(CombatType combatType)
+    {
+        int amuletId = getEquippedAmuletId();
+        if (amuletId == -1)
+        {
+            return 1.0;
+        }
+
+        boolean enchanted = amuletId == ItemID.SALVE_AMULET_E ||
+                amuletId == ItemID.SALVE_AMULETEI ||
+                amuletId == ItemID.SALVE_AMULETEI_25278 ||
+                amuletId == ItemID.SALVE_AMULETEI_26782;
+        boolean imbued = amuletId == ItemID.SALVE_AMULETI ||
+                amuletId == ItemID.SALVE_AMULETEI ||
+                amuletId == ItemID.SALVE_AMULETI_25250 ||
+                amuletId == ItemID.SALVE_AMULETEI_25278 ||
+                amuletId == ItemID.SALVE_AMULETI_26763 ||
+                amuletId == ItemID.SALVE_AMULETEI_26782;
+
+        if (combatType == CombatType.MELEE)
+        {
+            return enchanted ? 1.20 : 1.15;
+        }
+
+        if (!imbued)
+        {
+            return 1.0;
+        }
+
+        if (combatType == CombatType.MAGIC)
+        {
+            return enchanted ? 1.20 : 1.15;
+        }
+
+        if (combatType == CombatType.RANGED)
+        {
+            return enchanted ? 1.20 : (7.0 / 6.0);
+        }
+
+        return 1.0;
+    }
+
+    private int getEquippedAmuletId()
+    {
+        ItemContainer equipment = client != null ? client.getItemContainer(InventoryID.EQUIPMENT) : null;
         if (equipment == null)
         {
-            return false;
+            return -1;
         }
 
         Item amulet = equipment.getItem(EquipmentInventorySlot.AMULET.getSlotIdx());
-        if (amulet == null || amulet.getId() == -1)
-        {
-            return false;
-        }
-
-        // Salve amulet IDs
-        int amuletId = amulet.getId();
-        return amuletId == 4081 || // Salve amulet
-                amuletId == 4082 || // Salve amulet (e)
-                amuletId == 18783 || // Salve amulet (ei)
-                amuletId == 18784; // Salve amulet (imbued)
+        return amulet == null ? -1 : amulet.getId();
     }
 
     /**

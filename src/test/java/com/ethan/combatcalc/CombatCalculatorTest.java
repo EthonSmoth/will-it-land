@@ -91,6 +91,7 @@ public class CombatCalculatorTest
         profile.setAttackSubType(AttackSubType.MAGIC);
         profile.setEffectiveAttackLevel(60);
         profile.setAttackBonus(40);
+        profile.setMaxHitBase(12);
 
         NpcCombatProfile npcProfile = new NpcCombatProfile("Test NPC");
         npcProfile.setMagicLevel(40);
@@ -101,6 +102,64 @@ public class CombatCalculatorTest
         assertNotNull("Result should not be null", result);
         assertTrue("Hit chance should be positive", result.getHitChance() > 0.0);
         assertEquals("Combat type should be MAGIC", CombatType.MAGIC, result.getCombatType());
+        assertEquals("Magic max hit should use spell base damage", 12, result.getMaxHit());
+    }
+
+    @Test
+    public void testGemstoneCrabUnarmedKickWithThirtyStrength()
+    {
+        CombatProfile profile = new CombatProfile();
+        profile.setCombatType(CombatType.MELEE);
+        profile.setAttackSubType(AttackSubType.CRUSH);
+        profile.setEffectiveAttackLevel(30);
+        profile.setEffectiveStrengthLevel(30);
+        profile.setAttackBonus(0);
+        profile.setStrengthBonus(0);
+
+        CombatResult result = calculator.calculateMeleeAccuracy(profile, gemstoneCrab());
+
+        assertEquals("Unarmed 30 Strength should use the OSRS max-hit formula", 4, result.getMaxHit());
+        assertEquals("Attack roll should be effective attack level times equipment bonus + 64",
+                2432, result.getOffensiveRoll());
+        assertEquals("Gemstone Crab defence roll should use NPC defence + 9",
+                640, result.getDefensiveRoll());
+    }
+
+    @Test
+    public void testFireBoltAgainstGemstoneCrab()
+    {
+        CombatProfile profile = new CombatProfile();
+        profile.setCombatType(CombatType.MAGIC);
+        profile.setAttackSubType(AttackSubType.MAGIC);
+        profile.setEffectiveAttackLevel(35);
+        profile.setAttackBonus(0);
+        profile.setMagicDamageBonus(0);
+        profile.setMaxHitBase(12);
+
+        CombatResult result = calculator.calculateMagicAccuracy(profile, gemstoneCrab());
+
+        assertEquals("Fire Bolt base max hit is 12", 12, result.getMaxHit());
+        assertEquals(2752, result.getOffensiveRoll());
+        assertEquals("NPC magic defence uses magic level + 9", 640, result.getDefensiveRoll());
+        assertTrue("Fire Bolt on a Gemstone Crab should have a high but non-perfect hit chance",
+                result.getHitChance() > 0.85 && result.getHitChance() < 0.90);
+    }
+
+    @Test
+    public void testMagicDamageBonusAppliesToSpellMaxHit()
+    {
+        CombatProfile profile = new CombatProfile();
+        profile.setCombatType(CombatType.MAGIC);
+        profile.setAttackSubType(AttackSubType.MAGIC);
+        profile.setEffectiveAttackLevel(35);
+        profile.setAttackBonus(0);
+        profile.setMagicDamageBonus(10);
+        profile.setMaxHitBase(12);
+
+        CombatResult result = calculator.calculateMagicAccuracy(profile, gemstoneCrab());
+
+        assertEquals("Magic damage bonus should increase spell max hit after base spell damage",
+                13, result.getMaxHit());
     }
 
     /**
@@ -185,6 +244,19 @@ public class CombatCalculatorTest
         // Should have very high accuracy but still clamped to 1.0
         assertTrue("Hit chance should be very high", result.getHitChance() > 0.99);
         assertTrue("Hit chance should not exceed 100%", result.getHitChance() <= 1.0);
+    }
+
+    private static NpcCombatProfile gemstoneCrab()
+    {
+        NpcCombatProfile npcProfile = new NpcCombatProfile("Gemstone Crab");
+        npcProfile.setDefenceLevel(1);
+        npcProfile.setMagicLevel(1);
+        npcProfile.setStabDefence(0);
+        npcProfile.setSlashDefence(0);
+        npcProfile.setCrushDefence(0);
+        npcProfile.setRangedDefence(0);
+        npcProfile.setMagicDefence(0);
+        return npcProfile;
     }
 
     /**

@@ -87,6 +87,7 @@ public class EquipmentStatCollector
             // Sum up strength bonuses
             bonuses.strengthBonus += equipStats.getStr();
             bonuses.rangedStrengthBonus += equipStats.getRstr();
+            bonuses.magicDamageBonus += equipStats.getMdmg();
 
             // Defence bonuses
             bonuses.stabDefence += equipStats.getDstab();

@@ -3,9 +3,16 @@ package com.ethan.combatcalc;
 import com.google.inject.Provides;
 import net.runelite.api.Actor;
 import net.runelite.api.Client;
+import net.runelite.api.EquipmentInventorySlot;
+import net.runelite.api.InventoryID;
+import net.runelite.api.Item;
+import net.runelite.api.ItemContainer;
+import net.runelite.api.ItemID;
 import net.runelite.api.NPC;
 import net.runelite.api.Player;
 import net.runelite.api.Skill;
+import net.runelite.api.gameval.VarbitID;
+import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.api.events.GameTick;
@@ -38,6 +45,27 @@ import javax.inject.Inject;
  */
 public class WillItLandPlugin extends Plugin
 {
+    private static final int SPELL_WIND_STRIKE = 3273;
+    private static final int SPELL_WATER_STRIKE = 3275;
+    private static final int SPELL_EARTH_STRIKE = 3277;
+    private static final int SPELL_FIRE_STRIKE = 3279;
+    private static final int SPELL_WIND_BOLT = 3281;
+    private static final int SPELL_WATER_BOLT = 3283;
+    private static final int SPELL_EARTH_BOLT = 3285;
+    private static final int SPELL_FIRE_BOLT = 3291;
+    private static final int SPELL_WIND_BLAST = 3293;
+    private static final int SPELL_WATER_BLAST = 3295;
+    private static final int SPELL_EARTH_BLAST = 3297;
+    private static final int SPELL_FIRE_BLAST = 3299;
+    private static final int SPELL_WIND_WAVE = 3301;
+    private static final int SPELL_WATER_WAVE = 3303;
+    private static final int SPELL_EARTH_WAVE = 3305;
+    private static final int SPELL_FIRE_WAVE = 3307;
+    private static final int SPELL_WIND_SURGE = 3309;
+    private static final int SPELL_WATER_SURGE = 3311;
+    private static final int SPELL_EARTH_SURGE = 3313;
+    private static final int SPELL_FIRE_SURGE = 3315;
+
     @Inject
     private Client client;
 
@@ -253,9 +281,86 @@ public class WillItLandPlugin extends Plugin
             profile.setEffectiveStrengthLevel(magicLevel);
             profile.setAttackBonus(equipment.magicAttack);
             profile.setMagicDamageBonus(equipment.magicDamageBonus);
+            profile.setMaxHitBase(getSelectedSpellMaxHit());
         }
 
         return profile;
+    }
+
+    private int getSelectedSpellMaxHit()
+    {
+        int maxHit = getSpellMaxHit(client.getVarpValue(VarPlayerID.LASTCASTSPELL));
+        if (maxHit == 0)
+        {
+            maxHit = getSpellMaxHit(client.getVarpValue(VarPlayerID.AUTOCAST_SPELL_OBJ));
+        }
+        if (maxHit == 0)
+        {
+            maxHit = getSpellMaxHit(client.getVarbitValue(VarbitID.AUTOCAST_SPELL));
+        }
+
+        return maxHit;
+    }
+
+    private int getSpellMaxHit(int spellId)
+    {
+        switch (spellId)
+        {
+            case SPELL_WIND_STRIKE:
+                return 2;
+            case SPELL_WATER_STRIKE:
+                return 4;
+            case SPELL_EARTH_STRIKE:
+                return 6;
+            case SPELL_FIRE_STRIKE:
+                return 8;
+            case SPELL_WIND_BOLT:
+                return chaosGauntletsEquipped() ? 12 : 9;
+            case SPELL_WATER_BOLT:
+                return chaosGauntletsEquipped() ? 13 : 10;
+            case SPELL_EARTH_BOLT:
+                return chaosGauntletsEquipped() ? 14 : 11;
+            case SPELL_FIRE_BOLT:
+                return chaosGauntletsEquipped() ? 15 : 12;
+            case SPELL_WIND_BLAST:
+                return 13;
+            case SPELL_WATER_BLAST:
+                return 14;
+            case SPELL_EARTH_BLAST:
+                return 15;
+            case SPELL_FIRE_BLAST:
+                return 16;
+            case SPELL_WIND_WAVE:
+                return 17;
+            case SPELL_WATER_WAVE:
+                return 18;
+            case SPELL_EARTH_WAVE:
+                return 19;
+            case SPELL_FIRE_WAVE:
+                return 20;
+            case SPELL_WIND_SURGE:
+                return 21;
+            case SPELL_WATER_SURGE:
+                return 22;
+            case SPELL_EARTH_SURGE:
+                return 23;
+            case SPELL_FIRE_SURGE:
+                return 24;
+            default:
+                return 0;
+        }
+    }
+
+    private boolean chaosGauntletsEquipped()
+    {
+        ItemContainer equipment = client.getItemContainer(InventoryID.EQUIPMENT);
+        if (equipment == null)
+        {
+            return false;
+        }
+
+        Item gloves = equipment.getItem(EquipmentInventorySlot.GLOVES.getSlotIdx());
+        return gloves != null && gloves.getId() == ItemID.CHAOS_GAUNTLETS;
     }
 
     /**
