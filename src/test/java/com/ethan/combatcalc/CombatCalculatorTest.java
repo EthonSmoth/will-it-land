@@ -113,6 +113,51 @@ public class CombatCalculatorTest
         assertEquals("Combat type should be RANGED", CombatType.RANGED, result.getCombatType());
     }
 
+    @Test
+    public void accurateRangedStyleAddsThreeRangedLevels()
+    {
+        CombatProfile profile = new CombatProfile();
+        profile.setCombatType(CombatType.RANGED);
+        profile.setAttackSubType(AttackSubType.RANGED);
+        profile.setEffectiveAttackLevel(60);
+        profile.setAccuracyStyleBonus(3);
+        profile.setAttackBonus(28);
+
+        CombatResult result = calculator.calculateRangedAccuracy(profile, gemstoneCrab());
+
+        assertEquals((60 + 3 + 8) * (28 + 64), result.getOffensiveRoll());
+    }
+
+    @Test
+    public void longrangeDoesNotAddRangedAccuracy()
+    {
+        CombatProfile profile = new CombatProfile();
+        profile.setCombatType(CombatType.RANGED);
+        profile.setAttackSubType(AttackSubType.RANGED);
+        profile.setEffectiveAttackLevel(60);
+        profile.setAttackBonus(28);
+
+        CombatResult result = calculator.calculateRangedAccuracy(profile, gemstoneCrab());
+
+        assertEquals((60 + 8) * (28 + 64), result.getOffensiveRoll());
+    }
+
+    @Test
+    public void rangedMaxHitUsesRangedStrengthLevelAndSharedOsrsFormula()
+    {
+        CombatProfile profile = new CombatProfile();
+        profile.setCombatType(CombatType.RANGED);
+        profile.setAttackSubType(AttackSubType.RANGED);
+        profile.setEffectiveAttackLevel(74);
+        profile.setEffectiveStrengthLevel(76);
+        profile.setAttackBonus(28);
+        profile.setRangedStrengthBonus(55);
+
+        CombatResult result = calculator.calculateRangedAccuracy(profile, gemstoneCrab());
+
+        assertEquals(16, result.getMaxHit());
+    }
+
     /**
      * Test magic accuracy calculation.
      */

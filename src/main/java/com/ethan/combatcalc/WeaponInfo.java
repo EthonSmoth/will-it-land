@@ -22,6 +22,7 @@ public class WeaponInfo
     private final float magicDamageBonus;
     private final int specialEnergyPercent;
     private final AttackSubType activeAttackSubType;
+    private final int activeAttackStyleIndex;
     private final WeaponSpecialAttack specialAttack;
     private final List<String> passiveEffects;
     private final List<String> notes;
@@ -44,6 +45,7 @@ public class WeaponInfo
         this.magicDamageBonus = builder.magicDamageBonus;
         this.specialEnergyPercent = builder.specialEnergyPercent;
         this.activeAttackSubType = builder.activeAttackSubType;
+        this.activeAttackStyleIndex = builder.activeAttackStyleIndex;
         this.specialAttack = builder.specialAttack;
         this.passiveEffects = Collections.unmodifiableList(new ArrayList<>(builder.passiveEffects));
         this.notes = Collections.unmodifiableList(new ArrayList<>(builder.notes));
@@ -77,6 +79,7 @@ public class WeaponInfo
                 .magicDamageBonus(magicDamageBonus)
                 .specialEnergyPercent(specialEnergyPercent)
                 .activeAttackSubType(activeAttackSubType)
+                .activeAttackStyleIndex(activeAttackStyleIndex)
                 .specialAttack(specialAttack)
                 .passiveEffects(passiveEffects)
                 .notes(notes);
@@ -99,12 +102,18 @@ public class WeaponInfo
 
     public String formatAttackSpeed()
     {
-        if (attackSpeedTicks <= 0)
+        int selectedSpeed = getSelectedAttackSpeedTicks();
+        if (selectedSpeed <= 0)
         {
             return "";
         }
 
-        String formatted = formatTicks(attackSpeedTicks);
+        if (selectedSpeed != attackSpeedTicks && attackSpeedTicks > 0)
+        {
+            return formatTicks(selectedSpeed) + " selected, " + attackSpeedTicks + " base";
+        }
+
+        String formatted = formatTicks(selectedSpeed);
         if (rapidAttackSpeedTicks > 0 && rapidAttackSpeedTicks != attackSpeedTicks)
         {
             formatted += ", " + rapidAttackSpeedTicks + " rapid";
@@ -125,6 +134,74 @@ public class WeaponInfo
         }
 
         return baseRange + " tiles, " + longRange + " long";
+    }
+
+    public String formatActiveStyleSummary()
+    {
+        if (activeAttackSubType != AttackSubType.RANGED)
+        {
+            return "";
+        }
+
+        switch (activeAttackStyleIndex)
+        {
+            case 0:
+                return "Accurate: +3 Ranged";
+            case 1:
+                return "Rapid: faster attack speed";
+            case 2:
+                return "Longrange: +3 Defence, extended range";
+            default:
+                return "";
+        }
+    }
+
+    public String formatShiftTooltip()
+    {
+        if (!hasWeapon())
+        {
+            return "";
+        }
+
+        StringBuilder tooltip = new StringBuilder(weaponName);
+        appendTooltipLine(tooltip, "Mode", formatActiveStyleSummary());
+        appendTooltipLine(tooltip, "Bonuses", formatRelevantBonuses());
+        appendTooltipLine(tooltip, "Speed", formatAttackSpeed());
+        appendTooltipLine(tooltip, "Range", formatRange());
+        if (hasAmmo())
+        {
+            appendTooltipLine(tooltip, "Ammo", ammoName);
+        }
+        if (hasSpecialAttack())
+        {
+            appendTooltipLine(tooltip, "Spec", specialAttack.formatSummary());
+            appendTooltipLine(tooltip, "", specialAttack.getDescription());
+        }
+        for (String passiveEffect : passiveEffects)
+        {
+            appendTooltipLine(tooltip, "Effect", passiveEffect);
+        }
+        for (String note : notes)
+        {
+            appendTooltipLine(tooltip, "Note", note);
+        }
+
+        return tooltip.toString();
+    }
+
+    private static void appendTooltipLine(StringBuilder tooltip, String label, String value)
+    {
+        if (value == null || value.isEmpty())
+        {
+            return;
+        }
+
+        tooltip.append("<br>");
+        if (label != null && !label.isEmpty())
+        {
+            tooltip.append(label).append(": ");
+        }
+        tooltip.append(value);
     }
 
     public String formatRelevantBonuses()
@@ -204,6 +281,16 @@ public class WeaponInfo
         return attackSpeedTicks;
     }
 
+    public int getSelectedAttackSpeedTicks()
+    {
+        if (activeAttackStyleIndex == 1 && rapidAttackSpeedTicks > 0)
+        {
+            return rapidAttackSpeedTicks;
+        }
+
+        return attackSpeedTicks;
+    }
+
     public int getRapidAttackSpeedTicks()
     {
         return rapidAttackSpeedTicks;
@@ -269,6 +356,11 @@ public class WeaponInfo
         return activeAttackSubType;
     }
 
+    public int getActiveAttackStyleIndex()
+    {
+        return activeAttackStyleIndex;
+    }
+
     public WeaponSpecialAttack getSpecialAttack()
     {
         return specialAttack;
@@ -302,6 +394,7 @@ public class WeaponInfo
         private float magicDamageBonus;
         private int specialEnergyPercent;
         private AttackSubType activeAttackSubType = AttackSubType.UNKNOWN;
+        private int activeAttackStyleIndex = -1;
         private WeaponSpecialAttack specialAttack;
         private List<String> passiveEffects = new ArrayList<>();
         private List<String> notes = new ArrayList<>();
@@ -398,6 +491,12 @@ public class WeaponInfo
         public Builder activeAttackSubType(AttackSubType activeAttackSubType)
         {
             this.activeAttackSubType = activeAttackSubType == null ? AttackSubType.UNKNOWN : activeAttackSubType;
+            return this;
+        }
+
+        public Builder activeAttackStyleIndex(int activeAttackStyleIndex)
+        {
+            this.activeAttackStyleIndex = activeAttackStyleIndex;
             return this;
         }
 

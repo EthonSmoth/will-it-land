@@ -4,6 +4,8 @@ import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.OverlayPriority;
 import net.runelite.client.ui.overlay.components.LineComponent;
+import net.runelite.client.ui.overlay.tooltip.Tooltip;
+import net.runelite.client.ui.overlay.tooltip.TooltipManager;
 import java.awt.Color;
 
 import javax.inject.Inject;
@@ -27,14 +29,21 @@ public class WillItLandOverlay extends OverlayPanel
 {
     private final WillItLandPlugin plugin;
     private final WillItLandConfig config;
+    private final TooltipManager tooltipManager;
 
     @Inject
-    public WillItLandOverlay(WillItLandPlugin plugin, WillItLandConfig config)
+    public WillItLandOverlay(WillItLandPlugin plugin, WillItLandConfig config, TooltipManager tooltipManager)
     {
         this.plugin = plugin;
         this.config = config;
+        this.tooltipManager = tooltipManager;
         setPosition(OverlayPosition.TOP_LEFT);
         setPriority(OverlayPriority.MED);
+    }
+
+    public WillItLandOverlay(WillItLandPlugin plugin, WillItLandConfig config)
+    {
+        this(plugin, config, null);
     }
 
     @Override
@@ -98,7 +107,7 @@ public class WillItLandOverlay extends OverlayPanel
         // DPS
         if (config.showDPS() && result.getMaxHit() > 0)
         {
-            double dps = calculateDPS(result);
+            double dps = result.getEstimatedDps();
             panelComponent.getChildren().add(LineComponent.builder()
                     .left("DPS (est)")
                     .right(String.format("%.2f", dps))
@@ -160,6 +169,15 @@ public class WillItLandOverlay extends OverlayPanel
             return;
         }
 
+        if (plugin != null && plugin.isShiftDown() && tooltipManager != null)
+        {
+            String tooltip = weaponInfo.formatShiftTooltip();
+            if (!tooltip.isEmpty())
+            {
+                tooltipManager.add(new Tooltip(tooltip));
+            }
+        }
+
         panelComponent.getChildren().add(LineComponent.builder()
                 .left("")
                 .build());
@@ -176,6 +194,16 @@ public class WillItLandOverlay extends OverlayPanel
                     .left("Bonuses")
                     .right(relevantBonuses)
                     .rightColor(new Color(220, 220, 220))
+                    .build());
+        }
+
+        String activeStyle = weaponInfo.formatActiveStyleSummary();
+        if (!activeStyle.isEmpty())
+        {
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Mode")
+                    .right(activeStyle)
+                    .rightColor(new Color(180, 220, 255))
                     .build());
         }
 
@@ -397,28 +425,6 @@ public class WillItLandOverlay extends OverlayPanel
             default:
                 return Color.WHITE;
         }
-    }
-
-    /**
-     * Calculate estimated DPS.
-     */
-    private double calculateDPS(CombatResult result)
-    {
-        if (result.getMaxHit() <= 0 || result.getHitChance() <= 0)
-        {
-            return 0;
-        }
-
-        double averageHit = result.getMaxHit() / 2.0;
-        double attackSpeedSeconds = 2.4;
-        WeaponInfo weaponInfo = result.getWeaponInfo();
-        if (weaponInfo != null && weaponInfo.getAttackSpeedTicks() > 0)
-        {
-            attackSpeedSeconds = weaponInfo.getAttackSpeedTicks() * 0.6;
-        }
-
-        double dps = (averageHit * result.getHitChance()) / attackSpeedSeconds;
-        return Math.round(dps * 100.0) / 100.0;
     }
 
     /**

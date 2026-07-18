@@ -25,5 +25,6 @@ public class NpcStatsRepositoryTest
         assertEquals(50, blueDragon.getElementalWeaknessPercent());
 
         assertTrue(repository.hasNpcProfile("blue dragon"));
+        assertEquals("Blue dragon", repository.getNpcProfile("BLUE DRAGON").getNpcName());
     }
 }

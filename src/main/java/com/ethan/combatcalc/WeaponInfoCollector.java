@@ -47,6 +47,7 @@ public class WeaponInfoCollector
         WeaponInfo curated = database.lookup(weaponName);
         WeaponInfo.Builder builder = curated.toBuilder()
                 .activeAttackSubType(activeAttackSubType)
+                .activeAttackStyleIndex(client.getVarpValue(VarPlayer.ATTACK_STYLE))
                 .specialEnergyPercent(client.getVarpValue(VarPlayer.SPECIAL_ATTACK_PERCENT) / 10);
 
         ItemEquipmentStats weaponStats = getEquipmentStats(weapon.getId());

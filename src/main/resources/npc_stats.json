@@ -59,8 +59,8 @@
     "rangedDefence": -10,
     "magicDefence": -10
   },
-  "Giant Spider": {
-    "npcName": "Giant Spider",
+  "Giant spider": {
+    "npcName": "Giant spider",
     "combatLevel": 27,
     "maxHit": 3,
     "aggressive": true,

@@ -126,7 +126,7 @@ public class CombatCalculator
 
         // Calculate max hit
         int maxHit = calculateRangedMaxHit(
-                playerProfile.getEffectiveAttackLevel(),
+            playerProfile.getEffectiveStrengthLevel(),
                 playerProfile.getRangedStrengthBonus(),
                 playerProfile.getRangedStrengthStyleBonus(),
                 combatModifier.getRangedStrengthPrayerMultiplier(),
@@ -244,7 +244,7 @@ public class CombatCalculator
     /**
      * Ranged max hit formula.
      *
-     *   maxHit = floor( 1.3 + rangedLevel * (rangedStrengthBonus + 64) / 640 )
+    *   maxHit = floor( 0.5 + rangedLevel * (rangedStrengthBonus + 64) / 640 )
      *
      * rangedLevel          — effective ranged level (boosted).
      * rangedStrengthBonus  — the ranged strength bonus from equipped ammunition/weapon.
@@ -262,7 +262,7 @@ public class CombatCalculator
     public int calculateRangedMaxHit(int rangedLevel, int rangedStrengthBonus, int styleBonus, double prayerMultiplier, double damageMultiplier)
     {
         int effectiveRangedStrength = calculateEffectiveLevel(rangedLevel, prayerMultiplier, styleBonus);
-        int baseMaxHit = (int) Math.floor(1.3 + effectiveRangedStrength * (rangedStrengthBonus + 64) / 640.0);
+        int baseMaxHit = (int) Math.floor(0.5 + effectiveRangedStrength * (rangedStrengthBonus + 64) / 640.0);
         return (int) Math.floor(baseMaxHit * damageMultiplier);
     }
 

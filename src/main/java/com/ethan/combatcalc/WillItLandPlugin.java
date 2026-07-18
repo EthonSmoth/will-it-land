@@ -17,14 +17,17 @@ import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.api.events.GameTick;
+import net.runelite.client.input.KeyListener;
+import net.runelite.client.input.KeyManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
+import java.awt.event.KeyEvent;
 
 @PluginDescriptor(
-        name = "will-it-land",
+    name = "Will It Land",
         description = "Combat accuracy calculator - shows hit chance % vs your target NPC",
         tags = {"combat", "accuracy", "overlay", "pvm"}
 )
@@ -44,7 +47,7 @@ import javax.inject.Inject;
  *
  * The plugin only reads game state — it never writes to the game or sends any packets.
  */
-public class WillItLandPlugin extends Plugin
+public class WillItLandPlugin extends Plugin implements KeyListener
 {
     private static final int SPELL_WIND_STRIKE = 3273;
     private static final int SPELL_WATER_STRIKE = 3275;
@@ -72,6 +75,9 @@ public class WillItLandPlugin extends Plugin
 
     @Inject
     private OverlayManager overlayManager;
+
+    @Inject
+    private KeyManager keyManager;
 
     @Inject
     private WillItLandOverlay overlay;
@@ -113,6 +119,7 @@ public class WillItLandPlugin extends Plugin
     private NPC currentTargetNpc;
     private NpcCombatProfile latestNpcProfile;
     private WeaknessSummary latestWeaknessSummary;
+    private boolean shiftDown;
 
     public CombatResult getLatestResult()
     {
@@ -139,6 +146,11 @@ public class WillItLandPlugin extends Plugin
         return latestNpcProfile;
     }
 
+    public boolean isShiftDown()
+    {
+        return shiftDown;
+    }
+
     @Provides
     WillItLandConfig provideConfig(ConfigManager configManager)
     {
@@ -151,6 +163,7 @@ public class WillItLandPlugin extends Plugin
         // Register the overlay so it is drawn on screen.
         overlayManager.add(overlay);
         overlayManager.add(targetWeaknessOverlay);
+        keyManager.registerKeyListener(this);
     }
 
     @Override
@@ -159,10 +172,41 @@ public class WillItLandPlugin extends Plugin
         // Remove the overlay and reset state so nothing lingers after the plugin is disabled.
         overlayManager.remove(overlay);
         overlayManager.remove(targetWeaknessOverlay);
+        keyManager.unregisterKeyListener(this);
         latestResult = new CombatResult();
         currentTargetNpc = null;
         latestNpcProfile = null;
         latestWeaknessSummary = null;
+        shiftDown = false;
+    }
+
+    @Override
+    public void keyTyped(KeyEvent e)
+    {
+    }
+
+    @Override
+    public void keyPressed(KeyEvent e)
+    {
+        if (e.getKeyCode() == KeyEvent.VK_SHIFT)
+        {
+            shiftDown = true;
+        }
+    }
+
+    @Override
+    public void keyReleased(KeyEvent e)
+    {
+        if (e.getKeyCode() == KeyEvent.VK_SHIFT)
+        {
+            shiftDown = false;
+        }
+    }
+
+    @Override
+    public void focusLost()
+    {
+        shiftDown = false;
     }
 
     /**
@@ -260,7 +304,7 @@ public class WillItLandPlugin extends Plugin
                 debugInfo.append("Defensive Roll: ").append(latestResult.getDefensiveRoll()).append("\n");
             }
             debugInfo.append("Max Hit: ").append(latestResult.getMaxHit()).append("\n");
-            debugInfo.append("DPS (est): ").append(calculateDPS(latestResult)).append("\n");
+            debugInfo.append("DPS (est): ").append(latestResult.getEstimatedDps()).append("\n");
             if (config.showModifiers())
             {
                 debugInfo.append("Prayer Acc: ").append(combatModifier.getAccuracyPrayerMultiplier(combatType)).append("x\n");
@@ -370,7 +414,7 @@ public class WillItLandPlugin extends Plugin
 
         if (combatType == CombatType.RANGED)
         {
-            if (style == 0 || style == 3)
+            if (style == 0)
             {
                 profile.setAccuracyStyleBonus(3);
             }
@@ -531,31 +575,4 @@ public class WillItLandPlugin extends Plugin
         return gloves != null && gloves.getId() == ItemID.CHAOS_GAUNTLETS;
     }
 
-    /**
-     * Estimates damage per second for display purposes only.
-     *
-     * Formula: (maxHit / 2) * hitChance / attackSpeed.
-     * The active weapon's collected attack speed is used when known; otherwise
-     * the calculation falls back to 2.4 seconds (4 ticks).
-     */
-    private double calculateDPS(CombatResult result)
-    {
-        if (result.getMaxHit() <= 0 || result.getHitChance() <= 0)
-        {
-            return 0;
-        }
-
-        // Average hit = Max Hit / 2, assuming uniform distribution from 0..maxHit.
-        double averageHit = result.getMaxHit() / 2.0;
-        double attackSpeedSeconds = 2.4;
-        WeaponInfo weaponInfo = result.getWeaponInfo();
-        if (weaponInfo != null && weaponInfo.getAttackSpeedTicks() > 0)
-        {
-            attackSpeedSeconds = weaponInfo.getAttackSpeedTicks() * 0.6;
-        }
-
-        double dps = (averageHit * result.getHitChance()) / attackSpeedSeconds;
-
-        return Math.round(dps * 100.0) / 100.0; // Round to 2 decimals
-    }
 }

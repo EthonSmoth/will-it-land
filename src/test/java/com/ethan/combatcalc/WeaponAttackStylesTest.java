@@ -68,6 +68,7 @@ public class WeaponAttackStylesTest
         assertEquals(AttackSubType.RANGED, WeaponAttackStyles.resolveAttackSubType("Bow", 0));
         assertEquals(AttackSubType.RANGED, WeaponAttackStyles.resolveAttackSubType("Crossbow", 2));
         assertEquals(AttackSubType.RANGED, WeaponAttackStyles.resolveAttackSubType("Thrown", 1));
+        assertEquals(AttackSubType.RANGED, WeaponAttackStyles.resolveAttackSubType("Thrown", 2));
         assertEquals(AttackSubType.MAGIC, WeaponAttackStyles.resolveAttackSubType("Powered Staff", 2));
         assertEquals(AttackSubType.MAGIC, WeaponAttackStyles.resolveAttackSubType("Staff", 4));
     }

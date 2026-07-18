@@ -30,6 +30,46 @@ public class WeaponInfoTest
     }
 
     @Test
+    public void usesRapidSpeedForSelectedRapidRangedStyle()
+    {
+        WeaponInfo info = WeaponInfo.builder("Dragon knife")
+                .attackSpeedTicks(3)
+                .rapidAttackSpeedTicks(2)
+                .activeAttackSubType(AttackSubType.RANGED)
+                .activeAttackStyleIndex(1)
+                .build();
+
+        assertEquals(2, info.getSelectedAttackSpeedTicks());
+        assertEquals("2 ticks (1.2s) selected, 3 base", info.formatAttackSpeed());
+        assertEquals("Rapid: faster attack speed", info.formatActiveStyleSummary());
+    }
+
+    @Test
+    public void describesDragonKnifeSpecialAttack()
+    {
+        WeaponInfo info = new WeaponIntelDatabase().lookup("Dragon knife(p++)");
+
+        assertTrue(info.hasSpecialAttack());
+        assertEquals("Duality", info.getSpecialAttack().getName());
+        assertEquals(25, info.getSpecialAttack().getEnergyCostPercent());
+        assertEquals("3 ticks (1.8s), 2 rapid", info.formatAttackSpeed());
+        assertEquals("4 tiles, 6 long", info.formatRange());
+        assertEquals("Dragon knife<br>Speed: 3 ticks (1.8s), 2 rapid<br>Range: 4 tiles, 6 long<br>Spec: Duality (25%)<br>Throws two knives at once; each knife has its own accuracy and damage roll.",
+                info.formatShiftTooltip());
+    }
+
+    @Test
+    public void formatsRangedLongrangeStyle()
+    {
+        WeaponInfo info = WeaponInfo.builder("Dragon knife")
+                .activeAttackSubType(AttackSubType.RANGED)
+                .activeAttackStyleIndex(2)
+                .build();
+
+        assertEquals("Longrange: +3 Defence, extended range", info.formatActiveStyleSummary());
+    }
+
+    @Test
     public void formatsRangeWithLongrange()
     {
         WeaponInfo info = WeaponInfo.builder("Twisted bow")

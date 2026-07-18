@@ -23,6 +23,20 @@ public class WeaponIntelDatabase
                 .addPassiveEffect("Can inflict venom when charged with scales and darts.")
                 .build());
 
+        add(WeaponInfo.builder("Dragon knife")
+                .baseRange(4)
+                .longRange(6)
+                .attackSpeedTicks(3)
+                .rapidAttackSpeedTicks(2)
+                .specialAttack(new WeaponSpecialAttack(
+                        "Duality",
+                        25,
+                        "Throws two knives at once; each knife has its own accuracy and damage roll.",
+                        "Ranged",
+                        "None",
+                        "None"))
+                .build());
+
         add(WeaponInfo.builder("Dragon warhammer")
                 .baseRange(1)
                 .specialAttack(new WeaponSpecialAttack(
@@ -137,6 +151,9 @@ public class WeaponIntelDatabase
 
         return name
                 .replaceAll("<[^>]+>", "")
+                .replaceAll("(?i)\\(p\\+\\+\\)$", "")
+                .replaceAll("(?i)\\(p\\+\\)$", "")
+                .replaceAll("(?i)\\(p\\)$", "")
                 .replace('\u00a0', ' ')
                 .trim()
                 .replaceAll("\\s+", " ");

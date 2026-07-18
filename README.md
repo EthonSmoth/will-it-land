@@ -22,6 +22,7 @@ The current implementation is focused on transparent, OSRS-style combat rolls fo
 - Shows while your player is targeting an NPC.
 - Displays combat style, hit chance, max hit, and estimated DPS when enabled.
 - Includes optional weapon intel rows for weapon bonuses, speed, range, ammo, special attack notes, passive effects, and raw offensive bonuses.
+- Ranged weapon intel includes the active mode where known, such as Accurate `+3 Ranged`, Rapid faster attack speed, or Longrange extended range.
 - Includes an optional above-NPC weakness overlay showing target name/level/max hit/aggression, `DEF`, `WEAP`, and `BEST` recommendation lines.
 - Can show debug roll details for troubleshooting.
 - Shows a warning when the current target NPC is missing from the local stats database.
@@ -40,6 +41,7 @@ The calculator uses OSRS-style PvM roll mechanics:
 
 - Melee max hit uses effective Strength, melee strength bonus, prayer strength modifiers, and damage modifiers.
 - Ranged max hit uses effective Ranged strength, ranged strength bonus, ranged prayer strength modifiers, and damage modifiers.
+- Ranged attack styles follow wiki-style mode behavior: Accurate adds `+3 Ranged`, Rapid uses the faster selected attack speed when known, and Longrange does not increase outgoing ranged accuracy.
 - Magic max hit uses the selected/autocast standard spell base max hit, magic damage gear, and damage modifiers.
 - Powered staff base max hits are supported for Trident of the seas, Trident of the swamp, Sanguinesti staff, Warped sceptre, and Tumeken's shadow.
 - Elemental spell weaknesses add wiki-style bonus damage when the spell element matches the target's `wikiWeakness`.
@@ -179,6 +181,7 @@ Current test coverage includes:
 - Salve/Salve(ei) undead-only behavior.
 - Slayer helmet on-task behavior and Salve/Slayer non-stacking behavior.
 - Prayer multipliers for melee, ranged, and magic.
+- Dragon knife ranged style regression coverage for Accurate, Rapid, Longrange, range display, and Duality special attack intel.
 - Config toggles for prayer and special modifiers.
 - Defensive weakness detection and inventory weapon recommendations.
 - Wiki weakness override behavior, including elemental weaknesses mapping to magic.
@@ -267,6 +270,7 @@ Wiki is king for combat formulas and NPC data. When changing calculator behavior
 - Magic damage: https://oldschool.runescape.wiki/w/Magic_damage
 - Elemental weakness: https://oldschool.runescape.wiki/w/Elemental_weakness
 - Damage per second, melee reference: https://oldschool.runescape.wiki/w/Damage_per_second/Melee
+- Dragon knife ranged style reference: https://oldschool.runescape.wiki/w/Dragon_knife
 - Salve amulet (ei): https://oldschool.runescape.wiki/w/Salve_amulet%28ei%29
 - Slayer helmet: https://oldschool.runescape.wiki/w/Slayer_helmet
 - OSRS Wiki DPS calculator: https://tools.runescape.wiki/osrs-dps/

@@ -136,4 +136,21 @@ public class CombatResult
     {
         return String.format("%.1f%%", hitChance * 100.0);
     }
+
+    public double getEstimatedDps()
+    {
+        if (maxHit <= 0 || hitChance <= 0)
+        {
+            return 0;
+        }
+
+        double attackSpeedSeconds = 2.4;
+        if (weaponInfo != null && weaponInfo.getSelectedAttackSpeedTicks() > 0)
+        {
+            attackSpeedSeconds = weaponInfo.getSelectedAttackSpeedTicks() * 0.6;
+        }
+
+        double dps = (maxHit / 2.0) * hitChance / attackSpeedSeconds;
+        return Math.round(dps * 100.0) / 100.0;
+    }
 }

@@ -7,7 +7,7 @@ import net.runelite.api.Item;
 import net.runelite.api.ItemID;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.Prayer;
-import net.runelite.api.Skill;
+import net.runelite.client.game.ItemManager;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -33,27 +33,38 @@ public class CombatModifier
     private final WillItLandConfig config;
     private final EquipmentSynergyDetector equipmentSynergyDetector;
     private final SlayerTaskProvider slayerTaskProvider;
+    private final ItemManager itemManager;
 
     @Inject
     public CombatModifier(Client client,
                           WillItLandConfig config,
                           EquipmentSynergyDetector equipmentSynergyDetector,
-                          SlayerTaskProvider slayerTaskProvider)
+                          SlayerTaskProvider slayerTaskProvider,
+                          ItemManager itemManager)
     {
         this.client = client;
         this.config = config;
         this.equipmentSynergyDetector = equipmentSynergyDetector;
         this.slayerTaskProvider = slayerTaskProvider;
+        this.itemManager = itemManager;
+    }
+
+    public CombatModifier(Client client,
+                          WillItLandConfig config,
+                          EquipmentSynergyDetector equipmentSynergyDetector,
+                          SlayerTaskProvider slayerTaskProvider)
+    {
+        this(client, config, equipmentSynergyDetector, slayerTaskProvider, null);
     }
 
     public CombatModifier(Client client, WillItLandConfig config, EquipmentSynergyDetector equipmentSynergyDetector)
     {
-        this(client, config, equipmentSynergyDetector, new RuneLiteSlayerTaskProvider(client));
+        this(client, config, equipmentSynergyDetector, new RuneLiteSlayerTaskProvider(client), null);
     }
 
     public CombatModifier(Client client)
     {
-        this(client, null, null);
+        this(client, null, null, new RuneLiteSlayerTaskProvider(client), null);
     }
 
     /**
@@ -273,6 +284,12 @@ public class CombatModifier
      */
     private boolean wearingSalveAmulet()
     {
+        String amuletName = normalizeName(getEquippedItemName(EquipmentInventorySlot.AMULET));
+        if (amuletName.contains("salve amulet"))
+        {
+            return true;
+        }
+
         int amuletId = getEquippedAmuletId();
         return amuletId == ItemID.SALVE_AMULET ||
                 amuletId == ItemID.SALVE_AMULET_E ||
@@ -291,24 +308,32 @@ public class CombatModifier
 
     private double getBestTargetSpecificMultiplier(CombatType combatType, NpcCombatProfile npcProfile)
     {
-        double salve = isSalveAccuracyApplicable(combatType, npcProfile) ? getSalveMultiplier(combatType) : 1.0;
-        double slayer = slayerHelmetApplies(combatType, npcProfile) ? 1.15 : 1.0;
-        return Math.max(salve, slayer);
+        if (isSalveAccuracyApplicable(combatType, npcProfile))
+        {
+            return getSalveMultiplier(combatType);
+        }
+
+        return slayerHelmetApplies(combatType, npcProfile) ? getSlayerHelmMultiplier(combatType) : 1.0;
     }
 
     private double getSalveMultiplier(CombatType combatType)
     {
+        String amuletName = normalizeName(getEquippedItemName(EquipmentInventorySlot.AMULET));
         int amuletId = getEquippedAmuletId();
-        if (amuletId == -1)
+        if (amuletId == -1 && amuletName.isEmpty())
         {
             return 1.0;
         }
 
-        boolean enchanted = amuletId == ItemID.SALVE_AMULET_E ||
+        boolean enchanted = amuletName.contains("salve amulet(e)") ||
+                amuletName.contains("salve amulet(ei)") ||
+                amuletId == ItemID.SALVE_AMULET_E ||
                 amuletId == ItemID.SALVE_AMULETEI ||
                 amuletId == ItemID.SALVE_AMULETEI_25278 ||
                 amuletId == ItemID.SALVE_AMULETEI_26782;
-        boolean imbued = amuletId == ItemID.SALVE_AMULETI ||
+        boolean imbued = amuletName.contains("salve amulet(i)") ||
+                amuletName.contains("salve amulet(ei)") ||
+                amuletId == ItemID.SALVE_AMULETI ||
                 amuletId == ItemID.SALVE_AMULETEI ||
                 amuletId == ItemID.SALVE_AMULETI_25250 ||
                 amuletId == ItemID.SALVE_AMULETEI_25278 ||
@@ -338,6 +363,11 @@ public class CombatModifier
         return 1.0;
     }
 
+    private double getSlayerHelmMultiplier(CombatType combatType)
+    {
+        return combatType == CombatType.MELEE ? (7.0 / 6.0) : 1.15;
+    }
+
     private int getEquippedAmuletId()
     {
         ItemContainer equipment = client != null ? client.getItemContainer(InventoryID.EQUIPMENT) : null;
@@ -355,6 +385,12 @@ public class CombatModifier
      */
     private boolean wearingSlayerHelm()
     {
+        String headName = normalizeName(getEquippedItemName(EquipmentInventorySlot.HEAD));
+        if (headName.contains("slayer helmet") || headName.equals("black mask"))
+        {
+            return true;
+        }
+
         if (client == null)
         {
             return false;
@@ -394,6 +430,12 @@ public class CombatModifier
      */
     private boolean wearingImbueSlayerHelm()
     {
+        String headName = normalizeName(getEquippedItemName(EquipmentInventorySlot.HEAD));
+        if (headName.contains("slayer helmet i") || headName.contains("black mask i"))
+        {
+            return true;
+        }
+
         if (client == null)
         {
             return false;
@@ -446,10 +488,12 @@ public class CombatModifier
                 name.contains("skeleton") ||
                 name.contains("ghost") ||
                 name.contains("spectre") ||
-                name.contains("vampire") ||
                 name.contains("shade") ||
                 name.contains("ghoul") ||
                 name.contains("mummy") ||
+            name.contains("revenant") ||
+            name.contains("ankou") ||
+            name.contains("zogre") ||
                 name.contains("barrows") ||
                 name.contains("undead") ||
                 name.contains("wight");
@@ -520,6 +564,36 @@ public class CombatModifier
                 .replaceAll("[^a-z0-9 ]", " ")
                 .replaceAll("\\s+", " ")
                 .trim();
+    }
+
+    private String getEquippedItemName(EquipmentInventorySlot slot)
+    {
+        if (itemManager == null || client == null)
+        {
+            return "";
+        }
+
+        ItemContainer equipment = client.getItemContainer(InventoryID.EQUIPMENT);
+        if (equipment == null)
+        {
+            return "";
+        }
+
+        Item item = equipment.getItem(slot.getSlotIdx());
+        if (item == null || item.getId() == -1)
+        {
+            return "";
+        }
+
+        try
+        {
+            net.runelite.api.ItemComposition composition = itemManager.getItemComposition(item.getId());
+            return composition != null && composition.getName() != null ? composition.getName() : "";
+        }
+        catch (RuntimeException ex)
+        {
+            return "";
+        }
     }
 }
 

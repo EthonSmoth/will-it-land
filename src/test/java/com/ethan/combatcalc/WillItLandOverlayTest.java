@@ -12,9 +12,7 @@ public class WillItLandOverlayTest
 {
     @Test
     public void dpsUsesCollectedWeaponAttackSpeed()
-            throws Exception
     {
-        WillItLandOverlay overlay = new WillItLandOverlay(null, config(80, 50, 25));
         CombatResult result = new CombatResult();
         result.setHitChance(1.0);
         result.setMaxHit(10);
@@ -22,7 +20,22 @@ public class WillItLandOverlayTest
                 .attackSpeedTicks(5)
                 .build());
 
-        assertEquals(1.67, invokeCalculateDps(overlay, result), 0.001);
+        assertEquals(1.67, result.getEstimatedDps(), 0.001);
+    }
+
+    @Test
+    public void dpsUsesSelectedRapidWeaponSpeed()
+    {
+        CombatResult result = new CombatResult();
+        result.setHitChance(1.0);
+        result.setMaxHit(10);
+        result.setWeaponInfo(WeaponInfo.builder("Dragon knife")
+                .attackSpeedTicks(3)
+                .rapidAttackSpeedTicks(2)
+                .activeAttackStyleIndex(1)
+                .build());
+
+        assertEquals(4.17, result.getEstimatedDps(), 0.001);
     }
 
     @Test
@@ -35,14 +48,6 @@ public class WillItLandOverlayTest
         assertEquals(new Color(255, 255, 0), invokeHitChanceColor(overlay, 0.45));
         assertEquals(new Color(255, 165, 0), invokeHitChanceColor(overlay, 0.25));
         assertEquals(new Color(255, 0, 0), invokeHitChanceColor(overlay, 0.10));
-    }
-
-    private static double invokeCalculateDps(WillItLandOverlay overlay, CombatResult result)
-            throws Exception
-    {
-        Method method = WillItLandOverlay.class.getDeclaredMethod("calculateDPS", CombatResult.class);
-        method.setAccessible(true);
-        return (double) method.invoke(overlay, result);
     }
 
     private static Color invokeHitChanceColor(WillItLandOverlay overlay, double hitChance)

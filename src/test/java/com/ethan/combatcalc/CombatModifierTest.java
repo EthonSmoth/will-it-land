@@ -89,8 +89,8 @@ public class CombatModifierTest
                 null,
                 () -> "Skeletons");
 
-        assertEquals(1.15, modifier.getOffensiveRollMultiplier(CombatType.MELEE, new NpcCombatProfile("Skeleton")), 0.0001);
-        assertEquals(1.15, modifier.getDamageMultiplier(CombatType.MELEE, new NpcCombatProfile("Skeleton")), 0.0001);
+        assertEquals(7.0 / 6.0, modifier.getOffensiveRollMultiplier(CombatType.MELEE, new NpcCombatProfile("Skeleton")), 0.0001);
+        assertEquals(7.0 / 6.0, modifier.getDamageMultiplier(CombatType.MELEE, new NpcCombatProfile("Skeleton")), 0.0001);
     }
 
     @Test
@@ -129,6 +129,14 @@ public class CombatModifierTest
 
         assertEquals(1.20, modifier.getOffensiveRollMultiplier(CombatType.MELEE, new NpcCombatProfile("Skeleton")), 0.0001);
         assertEquals(1.20, modifier.getDamageMultiplier(CombatType.MAGIC, new NpcCombatProfile("Skeleton")), 0.0001);
+    }
+
+    @Test
+    public void vampireDoesNotCountAsUndeadForSalve()
+    {
+        CombatModifier modifier = new CombatModifier(clientWithAmulet(ItemID.SALVE_AMULETEI));
+
+        assertEquals(1.0, modifier.getOffensiveRollMultiplier(CombatType.MELEE, new NpcCombatProfile("Vampyre Juvenile")), 0.0001);
     }
 
     @Test
