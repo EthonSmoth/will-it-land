@@ -13,7 +13,7 @@ The current implementation is focused on transparent, OSRS-style combat rolls fo
 - Config wiring: prayer bonuses, special modifiers, and equipment set effects are now gated by their feature toggles.
 - Slayer wiring: Slayer helmet bonuses use RuneLite's current Slayer task varps/DB rows when a task is active, and do not stack with Salve bonuses.
 - Test status: `./gradlew.bat test` passes locally.
-- Plugin Hub status: latest update PR is tracked at https://github.com/runelite/plugin-hub/pull/12302.
+- Plugin Hub status: latest update PR is tracked at https://github.com/runelite/plugin-hub/pull/13966.
 
 ## Features
 
@@ -229,7 +229,7 @@ Manual local testing:
 2. Run through the Gradle `run` task for developer-mode testing.
 3. For normal RuneLite plugin distribution, package/release according to RuneLite external plugin requirements.
 
-Plugin Hub submission/update PR: https://github.com/runelite/plugin-hub/pull/12302
+Plugin Hub submission/update PR: https://github.com/runelite/plugin-hub/pull/13966
 
 ## Plugin Hub Maintenance
 
