@@ -4,12 +4,14 @@ import net.runelite.api.Client;
 import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.api.InventoryID;
 import net.runelite.api.Item;
+import net.runelite.api.ItemID;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.Prayer;
-import net.runelite.api.Skill;
+import net.runelite.client.game.ItemManager;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import java.util.Locale;
 
 /**
  * Computes special accuracy multipliers that sit on top of the base offensive roll.
@@ -19,7 +21,6 @@ import javax.inject.Singleton;
  *   Salve amulet     — +15% accuracy vs undead NPCs (name-based detection).
  *   Slayer helmet    — +15% accuracy when on a Slayer task (task detection is a TODO;
  *                       currently returns false so no bonus is applied).
- *   Occult amulet    — +10% magic accuracy for listed magic-boosting amulets.
  *   Prayer           — varies by prayer and combat type (see getPrayerAccuracyMultiplier).
  *
  * All equipment checks read the live ItemContainer for the EQUIPMENT inventory —
@@ -29,11 +30,41 @@ import javax.inject.Singleton;
 public class CombatModifier
 {
     private final Client client;
+    private final WillItLandConfig config;
+    private final EquipmentSynergyDetector equipmentSynergyDetector;
+    private final SlayerTaskProvider slayerTaskProvider;
+    private final ItemManager itemManager;
 
     @Inject
-    public CombatModifier(Client client)
+    public CombatModifier(Client client,
+                          WillItLandConfig config,
+                          EquipmentSynergyDetector equipmentSynergyDetector,
+                          SlayerTaskProvider slayerTaskProvider,
+                          ItemManager itemManager)
     {
         this.client = client;
+        this.config = config;
+        this.equipmentSynergyDetector = equipmentSynergyDetector;
+        this.slayerTaskProvider = slayerTaskProvider;
+        this.itemManager = itemManager;
+    }
+
+    public CombatModifier(Client client,
+                          WillItLandConfig config,
+                          EquipmentSynergyDetector equipmentSynergyDetector,
+                          SlayerTaskProvider slayerTaskProvider)
+    {
+        this(client, config, equipmentSynergyDetector, slayerTaskProvider, null);
+    }
+
+    public CombatModifier(Client client, WillItLandConfig config, EquipmentSynergyDetector equipmentSynergyDetector)
+    {
+        this(client, config, equipmentSynergyDetector, new RuneLiteSlayerTaskProvider(client), null);
+    }
+
+    public CombatModifier(Client client)
+    {
+        this(client, null, null, new RuneLiteSlayerTaskProvider(client), null);
     }
 
     /**
@@ -50,28 +81,117 @@ public class CombatModifier
     {
         double multiplier = 1.0;
 
-        // Salve amulet bonus (15% to melee accuracy and damage vs undead)
-        if (wearingSalveAmulet() && isUndeadNPC(npcProfile))
+        if (specialModifiersEnabled())
         {
-            multiplier *= 1.15;
+            multiplier *= getBestTargetSpecificMultiplier(combatType, npcProfile);
         }
 
-        // Slayer helmet bonus (15% to melee accuracy on task)
-        if ((wearingSlayerHelm() || wearingImbueSlayerHelm()) && isOnSlayerTask(npcProfile))
+        if (equipmentSetsEnabled() && equipmentSynergyDetector != null)
         {
-            multiplier *= 1.15;
+            multiplier *= equipmentSynergyDetector.getSetEffectAccuracyMultiplier(combatType);
         }
-
-        // Magic amulet bonuses (+10% magic accuracy)
-        if (combatType == CombatType.MAGIC && wearingMagicAmulet())
-        {
-            multiplier *= 1.10;
-        }
-
-        // Prayer bonuses
-        multiplier *= getPrayerAccuracyMultiplier(combatType);
 
         return multiplier;
+    }
+
+    public double getDamageMultiplier(CombatType combatType, NpcCombatProfile npcProfile)
+    {
+        double multiplier = 1.0;
+
+        if (specialModifiersEnabled())
+        {
+            multiplier *= getBestTargetSpecificMultiplier(combatType, npcProfile);
+        }
+
+        if (equipmentSetsEnabled() && equipmentSynergyDetector != null)
+        {
+            multiplier *= equipmentSynergyDetector.getSetEffectDamageMultiplier(combatType);
+        }
+
+        return multiplier;
+    }
+
+    public double getAccuracyPrayerMultiplier(CombatType combatType)
+    {
+        if (!prayerBonusesEnabled())
+        {
+            return 1.0;
+        }
+
+        return getPrayerAccuracyMultiplier(combatType);
+    }
+
+    public double getStrengthPrayerMultiplier()
+    {
+        if (client == null || !prayerBonusesEnabled())
+        {
+            return 1.0;
+        }
+
+        if (client.isPrayerActive(Prayer.PIETY))
+        {
+            return 1.23;
+        }
+        if (client.isPrayerActive(Prayer.CHIVALRY))
+        {
+            return 1.18;
+        }
+        if (client.isPrayerActive(Prayer.ULTIMATE_STRENGTH))
+        {
+            return 1.15;
+        }
+        if (client.isPrayerActive(Prayer.SUPERHUMAN_STRENGTH))
+        {
+            return 1.10;
+        }
+        if (client.isPrayerActive(Prayer.BURST_OF_STRENGTH))
+        {
+            return 1.05;
+        }
+
+        return 1.0;
+    }
+
+    public double getRangedStrengthPrayerMultiplier()
+    {
+        if (client == null || !prayerBonusesEnabled())
+        {
+            return 1.0;
+        }
+
+        if (client.isPrayerActive(Prayer.RIGOUR))
+        {
+            return 1.23;
+        }
+        if (client.isPrayerActive(Prayer.EAGLE_EYE))
+        {
+            return 1.15;
+        }
+        if (client.isPrayerActive(Prayer.HAWK_EYE))
+        {
+            return 1.10;
+        }
+        if (client.isPrayerActive(Prayer.SHARP_EYE))
+        {
+            return 1.05;
+        }
+
+        return 1.0;
+    }
+
+    private boolean prayerBonusesEnabled()
+    {
+        return config == null || config.enablePrayerBonuses();
+    }
+
+    private boolean specialModifiersEnabled()
+    {
+        return config == null || config.enableSpecialModifiers();
+    }
+
+    private boolean equipmentSetsEnabled()
+    {
+        return config == null || config.enableEquipmentSets();
     }
 
     /**
@@ -87,6 +207,11 @@ public class CombatModifier
      */
     private double getPrayerAccuracyMultiplier(CombatType combatType)
     {
+        if (client == null)
+        {
+            return 1.0;
+        }
+
         switch (combatType)
         {
             case MELEE:
@@ -159,24 +284,100 @@ public class CombatModifier
      */
     private boolean wearingSalveAmulet()
     {
-        ItemContainer equipment = client.getItemContainer(InventoryID.EQUIPMENT);
+        String amuletName = normalizeName(getEquippedItemName(EquipmentInventorySlot.AMULET));
+        if (amuletName.contains("salve amulet"))
+        {
+            return true;
+        }
+
+        int amuletId = getEquippedAmuletId();
+        return amuletId == ItemID.SALVE_AMULET ||
+                amuletId == ItemID.SALVE_AMULET_E ||
+                amuletId == ItemID.SALVE_AMULETI ||
+                amuletId == ItemID.SALVE_AMULETEI ||
+                amuletId == ItemID.SALVE_AMULETI_25250 ||
+                amuletId == ItemID.SALVE_AMULETEI_25278 ||
+                amuletId == ItemID.SALVE_AMULETI_26763 ||
+                amuletId == ItemID.SALVE_AMULETEI_26782;
+    }
+
+    private boolean isSalveAccuracyApplicable(CombatType combatType, NpcCombatProfile npcProfile)
+    {
+        return wearingSalveAmulet() && isUndeadNPC(npcProfile) && getSalveMultiplier(combatType) > 1.0;
+    }
+
+    private double getBestTargetSpecificMultiplier(CombatType combatType, NpcCombatProfile npcProfile)
+    {
+        if (isSalveAccuracyApplicable(combatType, npcProfile))
+        {
+            return getSalveMultiplier(combatType);
+        }
+
+        return slayerHelmetApplies(combatType, npcProfile) ? getSlayerHelmMultiplier(combatType) : 1.0;
+    }
+
+    private double getSalveMultiplier(CombatType combatType)
+    {
+        String amuletName = normalizeName(getEquippedItemName(EquipmentInventorySlot.AMULET));
+        int amuletId = getEquippedAmuletId();
+        if (amuletId == -1 && amuletName.isEmpty())
+        {
+            return 1.0;
+        }
+
+        boolean enchanted = amuletName.contains("salve amulet(e)") ||
+                amuletName.contains("salve amulet(ei)") ||
+                amuletId == ItemID.SALVE_AMULET_E ||
+                amuletId == ItemID.SALVE_AMULETEI ||
+                amuletId == ItemID.SALVE_AMULETEI_25278 ||
+                amuletId == ItemID.SALVE_AMULETEI_26782;
+        boolean imbued = amuletName.contains("salve amulet(i)") ||
+                amuletName.contains("salve amulet(ei)") ||
+                amuletId == ItemID.SALVE_AMULETI ||
+                amuletId == ItemID.SALVE_AMULETEI ||
+                amuletId == ItemID.SALVE_AMULETI_25250 ||
+                amuletId == ItemID.SALVE_AMULETEI_25278 ||
+                amuletId == ItemID.SALVE_AMULETI_26763 ||
+                amuletId == ItemID.SALVE_AMULETEI_26782;
+
+        if (combatType == CombatType.MELEE)
+        {
+            return enchanted ? 1.20 : 1.15;
+        }
+
+        if (!imbued)
+        {
+            return 1.0;
+        }
+
+        if (combatType == CombatType.MAGIC)
+        {
+            return enchanted ? 1.20 : 1.15;
+        }
+
+        if (combatType == CombatType.RANGED)
+        {
+            return enchanted ? 1.20 : (7.0 / 6.0);
+        }
+
+        return 1.0;
+    }
+
+    private double getSlayerHelmMultiplier(CombatType combatType)
+    {
+        return combatType == CombatType.MELEE ? (7.0 / 6.0) : 1.15;
+    }
+
+    private int getEquippedAmuletId()
+    {
+        ItemContainer equipment = client != null ? client.getItemContainer(InventoryID.EQUIPMENT) : null;
         if (equipment == null)
         {
-            return false;
+            return -1;
         }
 
         Item amulet = equipment.getItem(EquipmentInventorySlot.AMULET.getSlotIdx());
-        if (amulet == null || amulet.getId() == -1)
-        {
-            return false;
-        }
-
-        // Salve amulet IDs
-        int amuletId = amulet.getId();
-        return amuletId == 4081 || // Salve amulet
-                amuletId == 4082 || // Salve amulet (e)
-                amuletId == 18783 || // Salve amulet (ei)
-                amuletId == 18784; // Salve amulet (imbued)
+        return amulet == null ? -1 : amulet.getId();
     }
 
     /**
@@ -184,6 +385,17 @@ public class CombatModifier
      */
     private boolean wearingSlayerHelm()
     {
+        String headName = normalizeName(getEquippedItemName(EquipmentInventorySlot.HEAD));
+        if (headName.contains("slayer helmet") || headName.equals("black mask"))
+        {
+            return true;
+        }
+
+        if (client == null)
+        {
+            return false;
+        }
+
         ItemContainer equipment = client.getItemContainer(InventoryID.EQUIPMENT);
         if (equipment == null)
         {
@@ -197,9 +409,20 @@ public class CombatModifier
         }
 
         int headId = head.getId();
-        return headId == 4378 || // Slayer helmet
-                headId == 8921 || // Slayer helmet (i)
-                headId == 4379; // Black slayer helmet
+        return headId == ItemID.SLAYER_HELMET ||
+                headId == ItemID.BLACK_SLAYER_HELMET ||
+                headId == ItemID.GREEN_SLAYER_HELMET ||
+                headId == ItemID.RED_SLAYER_HELMET ||
+                headId == ItemID.PURPLE_SLAYER_HELMET ||
+                headId == ItemID.TURQUOISE_SLAYER_HELMET ||
+                headId == ItemID.HYDRA_SLAYER_HELMET ||
+                headId == ItemID.TWISTED_SLAYER_HELMET ||
+                headId == ItemID.TZTOK_SLAYER_HELMET ||
+                headId == ItemID.TZKAL_SLAYER_HELMET ||
+                headId == ItemID.VAMPYRIC_SLAYER_HELMET ||
+                headId == ItemID.ARAXYTE_SLAYER_HELMET ||
+                headId == ItemID.HOODED_SLAYER_HELMET ||
+                wearingImbueSlayerHelm();
     }
 
     /**
@@ -207,6 +430,17 @@ public class CombatModifier
      */
     private boolean wearingImbueSlayerHelm()
     {
+        String headName = normalizeName(getEquippedItemName(EquipmentInventorySlot.HEAD));
+        if (headName.contains("slayer helmet i") || headName.contains("black mask i"))
+        {
+            return true;
+        }
+
+        if (client == null)
+        {
+            return false;
+        }
+
         ItemContainer equipment = client.getItemContainer(InventoryID.EQUIPMENT);
         if (equipment == null)
         {
@@ -220,39 +454,19 @@ public class CombatModifier
         }
 
         int headId = head.getId();
-        return headId == 8921 || // Slayer helmet (i)
-                headId == 19639 || // Red slayer helmet (i)
-                headId == 19640 || // Blue slayer helmet (i)
-                headId == 19641 || // Green slayer helmet (i)
-                headId == 19642 || // Black slayer helmet (i)
-                headId == 24059; // Shadow slayer helmet (i)
-    }
-
-    /**
-     * Checks if the player is wearing a magic-boosting amulet.
-     * +10% magic accuracy amulets.
-     */
-    private boolean wearingMagicAmulet()
-    {
-        ItemContainer equipment = client.getItemContainer(InventoryID.EQUIPMENT);
-        if (equipment == null)
-        {
-            return false;
-        }
-
-        Item amulet = equipment.getItem(EquipmentInventorySlot.AMULET.getSlotIdx());
-        if (amulet == null || amulet.getId() == -1)
-        {
-            return false;
-        }
-
-        // Magic accuracy boosting amulets
-        int amuletId = amulet.getId();
-        return amuletId == 4699 || // Occult amulet
-                amuletId == 25202 || // Arcane pulse necklace
-                amuletId == 25203 || // Arcane pulse necklace (charged)
-                amuletId == 22011 || // Amulet of damned
-                amuletId == 22012; // Amulet of damned (shadow)
+        return headId == ItemID.SLAYER_HELMET_I ||
+                headId == ItemID.BLACK_SLAYER_HELMET_I ||
+                headId == ItemID.GREEN_SLAYER_HELMET_I ||
+                headId == ItemID.RED_SLAYER_HELMET_I ||
+                headId == ItemID.PURPLE_SLAYER_HELMET_I ||
+                headId == ItemID.TURQUOISE_SLAYER_HELMET_I ||
+                headId == ItemID.HYDRA_SLAYER_HELMET_I ||
+                headId == ItemID.TWISTED_SLAYER_HELMET_I ||
+                headId == ItemID.TZTOK_SLAYER_HELMET_I ||
+                headId == ItemID.TZKAL_SLAYER_HELMET_I ||
+                headId == ItemID.VAMPYRIC_SLAYER_HELMET_I ||
+                headId == ItemID.ARAXYTE_SLAYER_HELMET_I ||
+                headId == ItemID.HOODED_SLAYER_HELMET_I;
     }
 
     /**
@@ -274,27 +488,112 @@ public class CombatModifier
                 name.contains("skeleton") ||
                 name.contains("ghost") ||
                 name.contains("spectre") ||
-                name.contains("vampire") ||
                 name.contains("shade") ||
                 name.contains("ghoul") ||
                 name.contains("mummy") ||
+            name.contains("revenant") ||
+            name.contains("ankou") ||
+            name.contains("zogre") ||
                 name.contains("barrows") ||
                 name.contains("undead") ||
                 name.contains("wight");
     }
 
     /**
-     * Slayer task detection — not yet implemented.
-     *
-     * Integrating with the RuneLite Slayer plugin would require a plugin dependency
-     * or reading the player’s Slayer task VarBit, which differs by task source.
-     * Until implemented, the Slayer helmet bonus is never applied.
+     * Slayer task detection uses RuneLite's slayer varps/DB rows via SlayerTaskProvider.
      */
     private boolean isOnSlayerTask(NpcCombatProfile npcProfile)
     {
-        // TODO: Integrate with Slayer task detection
-        // For now, return false as this requires external plugin integration
-        return false;
+        if (npcProfile == null || npcProfile.getNpcName() == null || slayerTaskProvider == null)
+        {
+            return false;
+        }
+
+        return taskMatchesNpc(slayerTaskProvider.getTaskName(), npcProfile.getNpcName());
+    }
+
+    private boolean slayerHelmetApplies(CombatType combatType, NpcCombatProfile npcProfile)
+    {
+        if (!isOnSlayerTask(npcProfile))
+        {
+            return false;
+        }
+
+        if (combatType == CombatType.MELEE)
+        {
+            return wearingSlayerHelm();
+        }
+
+        return wearingImbueSlayerHelm() && (combatType == CombatType.RANGED || combatType == CombatType.MAGIC);
+    }
+
+    private boolean taskMatchesNpc(String taskName, String npcName)
+    {
+        String task = normalizeTaskName(taskName);
+        String npc = normalizeName(npcName);
+        if (task.isEmpty() || npc.isEmpty())
+        {
+            return false;
+        }
+
+        return task.contains(npc) || npc.contains(task);
+    }
+
+    private String normalizeTaskName(String taskName)
+    {
+        String task = normalizeName(taskName);
+        if (task.endsWith("ies"))
+        {
+            return task.substring(0, task.length() - 3) + "y";
+        }
+        if (task.endsWith("s"))
+        {
+            return task.substring(0, task.length() - 1);
+        }
+        return task;
+    }
+
+    private String normalizeName(String name)
+    {
+        if (name == null)
+        {
+            return "";
+        }
+
+        return name.toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9 ]", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
+
+    private String getEquippedItemName(EquipmentInventorySlot slot)
+    {
+        if (itemManager == null || client == null)
+        {
+            return "";
+        }
+
+        ItemContainer equipment = client.getItemContainer(InventoryID.EQUIPMENT);
+        if (equipment == null)
+        {
+            return "";
+        }
+
+        Item item = equipment.getItem(slot.getSlotIdx());
+        if (item == null || item.getId() == -1)
+        {
+            return "";
+        }
+
+        try
+        {
+            net.runelite.api.ItemComposition composition = itemManager.getItemComposition(item.getId());
+            return composition != null && composition.getName() != null ? composition.getName() : "";
+        }
+        catch (RuntimeException ex)
+        {
+            return "";
+        }
     }
 }
 

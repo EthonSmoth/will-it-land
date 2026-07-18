@@ -104,9 +104,100 @@ public interface WillItLandConfig extends Config
     }
 
     @ConfigSection(
+            name = "Weapon Intel",
+            description = "Show details about your current weapon",
+            position = 1
+    )
+    String weaponIntelSection = "weaponIntel";
+
+    @ConfigItem(
+            keyName = "showWeaponIntel",
+            name = "Show Weapon Intel",
+            description = "Display details about your current weapon while fighting an NPC",
+            section = weaponIntelSection,
+            position = 0
+    )
+    default boolean showWeaponIntel()
+    {
+        return false;
+    }
+
+    @ConfigItem(
+            keyName = "showWeaponSpeed",
+            name = "Show Speed",
+            description = "Display weapon attack speed",
+            section = weaponIntelSection,
+            position = 1
+    )
+    default boolean showWeaponSpeed()
+    {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "showWeaponRange",
+            name = "Show Range",
+            description = "Display weapon attack range when known",
+            section = weaponIntelSection,
+            position = 2
+    )
+    default boolean showWeaponRange()
+    {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "showWeaponSpecialAttack",
+            name = "Show Special Attack",
+            description = "Display special attack energy and known effects",
+            section = weaponIntelSection,
+            position = 3
+    )
+    default boolean showWeaponSpecialAttack()
+    {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "showWeaponPassiveEffects",
+            name = "Show Passive Effects",
+            description = "Display known passive effects and important notes",
+            section = weaponIntelSection,
+            position = 4
+    )
+    default boolean showWeaponPassiveEffects()
+    {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "showWeaponAmmo",
+            name = "Show Ammo",
+            description = "Display equipped ammo when present",
+            section = weaponIntelSection,
+            position = 5
+    )
+    default boolean showWeaponAmmo()
+    {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "showWeaponRawBonuses",
+            name = "Show Raw Bonuses",
+            description = "Display raw offensive weapon bonuses",
+            section = weaponIntelSection,
+            position = 6
+    )
+    default boolean showWeaponRawBonuses()
+    {
+        return false;
+    }
+
+    @ConfigSection(
             name = "Debug Settings",
             description = "Advanced debugging options",
-            position = 1
+            position = 2
     )
     String debugSection = "debug";
 
@@ -134,10 +225,70 @@ public interface WillItLandConfig extends Config
         return true;
     }
 
+    @ConfigItem(
+            keyName = "showTargetWeaknessOverlay",
+            name = "Show Target Weakness",
+            description = "Display defensive weakness and best inventory weapon above your target",
+            section = debugSection,
+            position = 2
+    )
+    default boolean showTargetWeaknessOverlay()
+    {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "showAllNpcWeaknessOverlays",
+            name = "Show All NPC Weaknesses",
+            description = "Display weakness labels above nearby NPCs instead of only your current target",
+            section = debugSection,
+            position = 3
+    )
+    default boolean showAllNpcWeaknessOverlays()
+    {
+        return true;
+    }
+
+    @ConfigItem(
+            keyName = "onlyShowWeaknessInCombat",
+            name = "Only Show In Combat",
+            description = "Only show above-NPC weakness labels for your target or NPCs attacking you",
+            section = debugSection,
+            position = 4
+    )
+    default boolean onlyShowWeaknessInCombat()
+    {
+        return false;
+    }
+
+    @ConfigItem(
+            keyName = "weaknessMinimumCombatLevel",
+            name = "Minimum NPC Level",
+            description = "Hide above-NPC weakness labels below this combat level",
+            section = debugSection,
+            position = 5
+    )
+    default int weaknessMinimumCombatLevel()
+    {
+        return 0;
+    }
+
+    @ConfigItem(
+            keyName = "showNpcThreatIntel",
+            name = "Show NPC Threat Intel",
+            description = "Display NPC level, max hit, aggression, weakness source, and best weapon in the panel",
+            section = debugSection,
+            position = 6
+    )
+    default boolean showNpcThreatIntel()
+    {
+        return true;
+    }
+
     @ConfigSection(
             name = "Visual Settings",
             description = "Customize appearance",
-            position = 2
+            position = 3
     )
     String visualSection = "visual";
 
@@ -180,28 +331,16 @@ public interface WillItLandConfig extends Config
     @ConfigSection(
             name = "Feature Toggles",
             description = "Enable/disable specific features",
-            position = 3
+            position = 4
     )
     String featureSection = "features";
-
-    @ConfigItem(
-            keyName = "enablePotionDetection",
-            name = "Enable Potion Detection",
-            description = "Detect and apply potion boosts",
-            section = featureSection,
-            position = 0
-    )
-    default boolean enablePotionDetection()
-    {
-        return true;
-    }
 
     @ConfigItem(
             keyName = "enableEquipmentSets",
             name = "Enable Equipment Set Effects",
             description = "Detect and apply equipment set bonuses",
             section = featureSection,
-            position = 1
+            position = 0
     )
     default boolean enableEquipmentSets()
     {
@@ -213,7 +352,7 @@ public interface WillItLandConfig extends Config
             name = "Enable Prayer Bonuses",
             description = "Apply active prayer accuracy boosts",
             section = featureSection,
-            position = 2
+            position = 1
     )
     default boolean enablePrayerBonuses()
     {
@@ -225,7 +364,7 @@ public interface WillItLandConfig extends Config
             name = "Enable Special Modifiers",
             description = "Apply Salve amulet, Slayer helm, etc.",
             section = featureSection,
-            position = 3
+            position = 2
     )
     default boolean enableSpecialModifiers()
     {

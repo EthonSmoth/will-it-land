@@ -4,6 +4,8 @@ import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.OverlayPriority;
 import net.runelite.client.ui.overlay.components.LineComponent;
+import net.runelite.client.ui.overlay.tooltip.Tooltip;
+import net.runelite.client.ui.overlay.tooltip.TooltipManager;
 import java.awt.Color;
 
 import javax.inject.Inject;
@@ -27,14 +29,21 @@ public class WillItLandOverlay extends OverlayPanel
 {
     private final WillItLandPlugin plugin;
     private final WillItLandConfig config;
+    private final TooltipManager tooltipManager;
 
     @Inject
-    public WillItLandOverlay(WillItLandPlugin plugin, WillItLandConfig config)
+    public WillItLandOverlay(WillItLandPlugin plugin, WillItLandConfig config, TooltipManager tooltipManager)
     {
         this.plugin = plugin;
         this.config = config;
+        this.tooltipManager = tooltipManager;
         setPosition(OverlayPosition.TOP_LEFT);
         setPriority(OverlayPriority.MED);
+    }
+
+    public WillItLandOverlay(WillItLandPlugin plugin, WillItLandConfig config)
+    {
+        this(plugin, config, null);
     }
 
     @Override
@@ -98,12 +107,22 @@ public class WillItLandOverlay extends OverlayPanel
         // DPS
         if (config.showDPS() && result.getMaxHit() > 0)
         {
-            double dps = calculateDPS(result);
+            double dps = result.getEstimatedDps();
             panelComponent.getChildren().add(LineComponent.builder()
                     .left("DPS (est)")
                     .right(String.format("%.2f", dps))
                     .rightColor(new Color(150, 200, 255)) // Light blue
                     .build());
+        }
+
+        if (config.showWeaponIntel())
+        {
+            renderWeaponIntel(result.getWeaponInfo());
+        }
+
+        if (config.showNpcThreatIntel())
+        {
+            renderNpcThreatIntel(plugin.getLatestNpcProfile(), plugin.getLatestWeaknessSummary());
         }
 
         // Show warning if NPC stats were not found
@@ -141,6 +160,217 @@ public class WillItLandOverlay extends OverlayPanel
         }
 
         return super.render(graphics);
+    }
+
+    private void renderWeaponIntel(WeaponInfo weaponInfo)
+    {
+        if (weaponInfo == null || !weaponInfo.hasWeapon())
+        {
+            return;
+        }
+
+        if (plugin != null && plugin.isShiftDown() && tooltipManager != null)
+        {
+            String tooltip = weaponInfo.formatShiftTooltip();
+            if (!tooltip.isEmpty())
+            {
+                tooltipManager.add(new Tooltip(tooltip));
+            }
+        }
+
+        panelComponent.getChildren().add(LineComponent.builder()
+                .left("")
+                .build());
+        panelComponent.getChildren().add(LineComponent.builder()
+                .left("Weapon")
+                .right(weaponInfo.getWeaponName())
+                .rightColor(new Color(255, 220, 120))
+                .build());
+
+        String relevantBonuses = weaponInfo.formatRelevantBonuses();
+        if (!relevantBonuses.isEmpty())
+        {
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Bonuses")
+                    .right(relevantBonuses)
+                    .rightColor(new Color(220, 220, 220))
+                    .build());
+        }
+
+        String activeStyle = weaponInfo.formatActiveStyleSummary();
+        if (!activeStyle.isEmpty())
+        {
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Mode")
+                    .right(activeStyle)
+                    .rightColor(new Color(180, 220, 255))
+                    .build());
+        }
+
+        if (config.showWeaponSpeed())
+        {
+            String speed = weaponInfo.formatAttackSpeed();
+            if (!speed.isEmpty())
+            {
+                panelComponent.getChildren().add(LineComponent.builder()
+                        .left("Speed")
+                        .right(speed)
+                        .rightColor(new Color(180, 220, 255))
+                        .build());
+            }
+        }
+
+        if (config.showWeaponRange())
+        {
+            String range = weaponInfo.formatRange();
+            if (!range.isEmpty())
+            {
+                panelComponent.getChildren().add(LineComponent.builder()
+                        .left("Range")
+                        .right(range)
+                        .rightColor(new Color(180, 255, 180))
+                        .build());
+            }
+        }
+
+        if (config.showWeaponAmmo() && weaponInfo.hasAmmo())
+        {
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Ammo")
+                    .right(weaponInfo.getAmmoName())
+                    .rightColor(new Color(200, 255, 200))
+                    .build());
+        }
+
+        if (config.showWeaponSpecialAttack() && weaponInfo.hasSpecialAttack())
+        {
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Spec")
+                    .right(weaponInfo.getSpecialAttack().formatSummary())
+                    .rightColor(new Color(255, 180, 180))
+                    .build());
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Energy")
+                    .right(weaponInfo.getSpecialEnergyPercent() + "%")
+                    .rightColor(new Color(255, 220, 160))
+                    .build());
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Spec note")
+                    .right(weaponInfo.getSpecialAttack().getDescription())
+                    .rightColor(new Color(220, 220, 220))
+                    .build());
+        }
+
+        if (config.showWeaponPassiveEffects())
+        {
+            for (String passiveEffect : weaponInfo.getPassiveEffects())
+            {
+                panelComponent.getChildren().add(LineComponent.builder()
+                        .left("Effect")
+                        .right(passiveEffect)
+                        .rightColor(new Color(220, 220, 220))
+                        .build());
+            }
+            for (String note : weaponInfo.getNotes())
+            {
+                panelComponent.getChildren().add(LineComponent.builder()
+                        .left("Note")
+                        .right(note)
+                        .rightColor(new Color(220, 220, 220))
+                        .build());
+            }
+        }
+
+        if (config.showWeaponRawBonuses())
+        {
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Raw atk")
+                    .right(weaponInfo.formatAllOffensiveBonuses())
+                    .rightColor(new Color(190, 190, 190))
+                    .build());
+        }
+    }
+
+    private void renderNpcThreatIntel(NpcCombatProfile profile, WeaknessSummary summary)
+    {
+        if (profile == null && summary == null)
+        {
+            return;
+        }
+
+        panelComponent.getChildren().add(LineComponent.builder()
+                .left("")
+                .build());
+
+        if (profile != null)
+        {
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("NPC")
+                    .right(profile.getNpcName() == null ? "Unknown" : profile.getNpcName())
+                    .rightColor(new Color(255, 220, 120))
+                    .build());
+
+            if (profile.getCombatLevel() > 0)
+            {
+                panelComponent.getChildren().add(LineComponent.builder()
+                        .left("NPC level")
+                        .right(String.valueOf(profile.getCombatLevel()))
+                        .rightColor(new Color(220, 220, 220))
+                        .build());
+            }
+
+            if (profile.getMaxHit() > 0)
+            {
+                panelComponent.getChildren().add(LineComponent.builder()
+                        .left("NPC max")
+                        .right(String.valueOf(profile.getMaxHit()))
+                        .rightColor(new Color(255, 180, 180))
+                        .build());
+            }
+
+            if (profile.isAggressive())
+            {
+                panelComponent.getChildren().add(LineComponent.builder()
+                        .left("Aggressive")
+                        .right("yes")
+                        .rightColor(new Color(255, 180, 120))
+                        .build());
+            }
+        }
+
+        if (summary != null)
+        {
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Weakness")
+                    .right(formatWeakness(summary))
+                    .rightColor(new Color(255, 220, 120))
+                    .build());
+
+            panelComponent.getChildren().add(LineComponent.builder()
+                    .left("Weapon weak")
+                    .right(summary.getWeaponWeakness().getDisplayName())
+                    .rightColor(new Color(180, 220, 255))
+                    .build());
+
+            if (summary.hasRecommendation())
+            {
+                panelComponent.getChildren().add(LineComponent.builder()
+                        .left("Best inv")
+                        .right(summary.getRecommendedWeaponName())
+                        .rightColor(new Color(180, 255, 180))
+                        .build());
+            }
+        }
+    }
+
+    private String formatWeakness(WeaknessSummary summary)
+    {
+        String label = summary.getWeaknessLabel();
+        if (label == null || label.isEmpty())
+        {
+            label = summary.getDefensiveWeakness().getDisplayName();
+        }
+        return label + " (" + summary.getWeaknessSource() + ")";
     }
 
 
@@ -198,35 +428,24 @@ public class WillItLandOverlay extends OverlayPanel
     }
 
     /**
-     * Calculate estimated DPS.
-     */
-    private double calculateDPS(CombatResult result)
-    {
-        if (result.getMaxHit() <= 0 || result.getHitChance() <= 0)
-        {
-            return 0;
-        }
-
-        double averageHit = result.getMaxHit() / 2.0;
-        double dps = (averageHit * result.getHitChance()) / 2.4;
-        return Math.round(dps * 100.0) / 100.0;
-    }
-
-    /**
      * Get color for hit chance based on the percentage.
      * Green (high chance) -> Yellow (medium) -> Red (low chance)
      */
     private Color getHitChanceColor(double hitChance)
     {
-        if (hitChance >= 0.80)
+        double highThreshold = config.colorHighAccuracy() / 100.0;
+        double mediumThreshold = config.colorMediumAccuracy() / 100.0;
+        double lowThreshold = config.colorLowAccuracy() / 100.0;
+
+        if (hitChance >= highThreshold)
         {
             return new Color(0, 255, 0); // Green
         }
-        else if (hitChance >= 0.50)
+        else if (hitChance >= mediumThreshold)
         {
             return new Color(255, 255, 0); // Yellow
         }
-        else if (hitChance >= 0.25)
+        else if (hitChance >= lowThreshold)
         {
             return new Color(255, 165, 0); // Orange
         }

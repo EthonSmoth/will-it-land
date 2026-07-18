@@ -3,20 +3,31 @@ package com.ethan.combatcalc;
 import com.google.inject.Provides;
 import net.runelite.api.Actor;
 import net.runelite.api.Client;
+import net.runelite.api.EquipmentInventorySlot;
+import net.runelite.api.InventoryID;
+import net.runelite.api.Item;
+import net.runelite.api.ItemContainer;
+import net.runelite.api.ItemID;
 import net.runelite.api.NPC;
 import net.runelite.api.Player;
 import net.runelite.api.Skill;
+import net.runelite.api.VarPlayer;
+import net.runelite.api.gameval.VarbitID;
+import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.api.events.GameTick;
+import net.runelite.client.input.KeyListener;
+import net.runelite.client.input.KeyManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
+import java.awt.event.KeyEvent;
 
 @PluginDescriptor(
-        name = "will-it-land",
+    name = "Will It Land",
         description = "Combat accuracy calculator - shows hit chance % vs your target NPC",
         tags = {"combat", "accuracy", "overlay", "pvm"}
 )
@@ -36,8 +47,29 @@ import javax.inject.Inject;
  *
  * The plugin only reads game state — it never writes to the game or sends any packets.
  */
-public class WillItLandPlugin extends Plugin
+public class WillItLandPlugin extends Plugin implements KeyListener
 {
+    private static final int SPELL_WIND_STRIKE = 3273;
+    private static final int SPELL_WATER_STRIKE = 3275;
+    private static final int SPELL_EARTH_STRIKE = 3277;
+    private static final int SPELL_FIRE_STRIKE = 3279;
+    private static final int SPELL_WIND_BOLT = 3281;
+    private static final int SPELL_WATER_BOLT = 3283;
+    private static final int SPELL_EARTH_BOLT = 3285;
+    private static final int SPELL_FIRE_BOLT = 3291;
+    private static final int SPELL_WIND_BLAST = 3293;
+    private static final int SPELL_WATER_BLAST = 3295;
+    private static final int SPELL_EARTH_BLAST = 3297;
+    private static final int SPELL_FIRE_BLAST = 3299;
+    private static final int SPELL_WIND_WAVE = 3301;
+    private static final int SPELL_WATER_WAVE = 3303;
+    private static final int SPELL_EARTH_WAVE = 3305;
+    private static final int SPELL_FIRE_WAVE = 3307;
+    private static final int SPELL_WIND_SURGE = 3309;
+    private static final int SPELL_WATER_SURGE = 3311;
+    private static final int SPELL_EARTH_SURGE = 3313;
+    private static final int SPELL_FIRE_SURGE = 3315;
+
     @Inject
     private Client client;
 
@@ -45,7 +77,13 @@ public class WillItLandPlugin extends Plugin
     private OverlayManager overlayManager;
 
     @Inject
+    private KeyManager keyManager;
+
+    @Inject
     private WillItLandOverlay overlay;
+
+    @Inject
+    private TargetWeaknessOverlay targetWeaknessOverlay;
 
     @Inject
     private WillItLandConfig config;
@@ -60,9 +98,28 @@ public class WillItLandPlugin extends Plugin
     private CombatCalculator combatCalculator;
 
     @Inject
+    private CombatModifier combatModifier;
+
+    @Inject
+    private WeaponInfoCollector weaponInfoCollector;
+
+    @Inject
     private NpcStatsRepository npcStatsRepository;
 
+    @Inject
+    private InventoryWeaponCollector inventoryWeaponCollector;
+
+    @Inject
+    private WeaknessAnalyzer weaknessAnalyzer;
+
+    @Inject
+    private PoweredStaffMaxHitResolver poweredStaffMaxHitResolver;
+
     private CombatResult latestResult = new CombatResult();
+    private NPC currentTargetNpc;
+    private NpcCombatProfile latestNpcProfile;
+    private WeaknessSummary latestWeaknessSummary;
+    private boolean shiftDown;
 
     public CombatResult getLatestResult()
     {
@@ -72,6 +129,26 @@ public class WillItLandPlugin extends Plugin
     public WillItLandConfig getConfig()
     {
         return config;
+    }
+
+    public NPC getCurrentTargetNpc()
+    {
+        return currentTargetNpc;
+    }
+
+    public WeaknessSummary getLatestWeaknessSummary()
+    {
+        return latestWeaknessSummary;
+    }
+
+    public NpcCombatProfile getLatestNpcProfile()
+    {
+        return latestNpcProfile;
+    }
+
+    public boolean isShiftDown()
+    {
+        return shiftDown;
     }
 
     @Provides
@@ -85,6 +162,8 @@ public class WillItLandPlugin extends Plugin
     {
         // Register the overlay so it is drawn on screen.
         overlayManager.add(overlay);
+        overlayManager.add(targetWeaknessOverlay);
+        keyManager.registerKeyListener(this);
     }
 
     @Override
@@ -92,7 +171,42 @@ public class WillItLandPlugin extends Plugin
     {
         // Remove the overlay and reset state so nothing lingers after the plugin is disabled.
         overlayManager.remove(overlay);
+        overlayManager.remove(targetWeaknessOverlay);
+        keyManager.unregisterKeyListener(this);
         latestResult = new CombatResult();
+        currentTargetNpc = null;
+        latestNpcProfile = null;
+        latestWeaknessSummary = null;
+        shiftDown = false;
+    }
+
+    @Override
+    public void keyTyped(KeyEvent e)
+    {
+    }
+
+    @Override
+    public void keyPressed(KeyEvent e)
+    {
+        if (e.getKeyCode() == KeyEvent.VK_SHIFT)
+        {
+            shiftDown = true;
+        }
+    }
+
+    @Override
+    public void keyReleased(KeyEvent e)
+    {
+        if (e.getKeyCode() == KeyEvent.VK_SHIFT)
+        {
+            shiftDown = false;
+        }
+    }
+
+    @Override
+    public void focusLost()
+    {
+        shiftDown = false;
     }
 
     /**
@@ -130,8 +244,13 @@ public class WillItLandPlugin extends Plugin
         if (targetNpc == null)
         {
             latestResult = new CombatResult();
+            currentTargetNpc = null;
+            latestNpcProfile = null;
+            latestWeaknessSummary = null;
             return;
         }
+
+        currentTargetNpc = targetNpc;
 
         // Resolve combat type and subtype
         CombatType combatType = attackStyleResolver.resolveCombatType(client);
@@ -139,9 +258,13 @@ public class WillItLandPlugin extends Plugin
 
         // Build player combat profile
         CombatProfile playerProfile = buildPlayerProfile(combatType, attackSubType);
+        applyAttackStyleBonuses(playerProfile, combatType);
+        WeaponInfo weaponInfo = weaponInfoCollector.collect(attackSubType);
 
         // Build NPC combat profile
         NpcCombatProfile npcProfile = npcStatsRepository.getNpcProfile(targetNpc.getName());
+        latestNpcProfile = npcProfile;
+        latestWeaknessSummary = weaknessAnalyzer.analyze(npcProfile, inventoryWeaponCollector.collectCandidates());
 
         // Check if NPC was found in database
         boolean npcFound = npcStatsRepository.hasNpcProfile(targetNpc.getName());
@@ -160,6 +283,8 @@ public class WillItLandPlugin extends Plugin
             latestResult = combatCalculator.calculateMagicAccuracy(playerProfile, npcProfile);
         }
 
+        latestResult.setWeaponInfo(weaponInfo);
+
         // Set unknown flag if NPC wasn't in database
         if (!npcFound)
         {
@@ -170,10 +295,21 @@ public class WillItLandPlugin extends Plugin
         if (config.debugMode())
         {
             StringBuilder debugInfo = new StringBuilder();
-            debugInfo.append("Offensive Roll: ").append(latestResult.getOffensiveRoll()).append("\n");
-            debugInfo.append("Defensive Roll: ").append(latestResult.getDefensiveRoll()).append("\n");
+            if (config.showOffensiveRoll())
+            {
+                debugInfo.append("Offensive Roll: ").append(latestResult.getOffensiveRoll()).append("\n");
+            }
+            if (config.showDefensiveRoll())
+            {
+                debugInfo.append("Defensive Roll: ").append(latestResult.getDefensiveRoll()).append("\n");
+            }
             debugInfo.append("Max Hit: ").append(latestResult.getMaxHit()).append("\n");
-            debugInfo.append("DPS (est): ").append(calculateDPS(latestResult)).append("\n");
+            debugInfo.append("DPS (est): ").append(latestResult.getEstimatedDps()).append("\n");
+            if (config.showModifiers())
+            {
+                debugInfo.append("Prayer Acc: ").append(combatModifier.getAccuracyPrayerMultiplier(combatType)).append("x\n");
+                debugInfo.append("Damage Mod: ").append(combatModifier.getDamageMultiplier(combatType, npcProfile)).append("x\n");
+            }
 
             latestResult.setDebugMode(true);
             latestResult.setDebugInfo(debugInfo.toString());
@@ -247,34 +383,196 @@ public class WillItLandPlugin extends Plugin
             profile.setEffectiveStrengthLevel(magicLevel);
             profile.setAttackBonus(equipment.magicAttack);
             profile.setMagicDamageBonus(equipment.magicDamageBonus);
+            profile.setMaxHitBase(getSelectedSpellMaxHit());
+            profile.setSpellElement(getSelectedSpellElement());
         }
 
         return profile;
     }
 
-    /**
-     * Estimates damage per second for display purposes only.
-     *
-     * Formula: (maxHit / 2) * hitChance / attackSpeed
-     *   - maxHit / 2 approximates average damage per hit (uniform distribution 0..maxHit).
-     *   - attackSpeed is assumed to be 2.4 seconds (4 ticks), a common weapon speed.
-     *
-     * This is a simplified estimate; actual DPS varies by weapon speed and
-     * special attack usage.  The overlay labels it "DPS (est)" to reflect this.
-     */
-    private double calculateDPS(CombatResult result)
+    private void applyAttackStyleBonuses(CombatProfile profile, CombatType combatType)
     {
-        if (result.getMaxHit() <= 0 || result.getHitChance() <= 0)
+        int style = client.getVarpValue(VarPlayer.ATTACK_STYLE);
+
+        if (combatType == CombatType.MELEE)
+        {
+            if (style == 0)
+            {
+                profile.setAccuracyStyleBonus(3);
+            }
+            else if (style == 1)
+            {
+                profile.setStrengthStyleBonus(3);
+            }
+            else if (style == 3)
+            {
+                profile.setAccuracyStyleBonus(1);
+                profile.setStrengthStyleBonus(1);
+            }
+            return;
+        }
+
+        if (combatType == CombatType.RANGED)
+        {
+            if (style == 0)
+            {
+                profile.setAccuracyStyleBonus(3);
+            }
+        }
+    }
+
+    private int getSelectedSpellMaxHit()
+    {
+        int poweredStaffMaxHit = getPoweredStaffMaxHit();
+        if (poweredStaffMaxHit > 0)
+        {
+            return poweredStaffMaxHit;
+        }
+
+        int maxHit = getSpellMaxHit(client.getVarpValue(VarPlayerID.LASTCASTSPELL));
+        if (maxHit == 0)
+        {
+            maxHit = getSpellMaxHit(client.getVarpValue(VarPlayerID.AUTOCAST_SPELL_OBJ));
+        }
+        if (maxHit == 0)
+        {
+            maxHit = getSpellMaxHit(client.getVarbitValue(VarbitID.AUTOCAST_SPELL));
+        }
+
+        return maxHit;
+    }
+
+    private String getSelectedSpellElement()
+    {
+        if (getPoweredStaffMaxHit() > 0)
+        {
+            return null;
+        }
+
+        String element = getSpellElement(client.getVarpValue(VarPlayerID.LASTCASTSPELL));
+        if (element == null)
+        {
+            element = getSpellElement(client.getVarpValue(VarPlayerID.AUTOCAST_SPELL_OBJ));
+        }
+        if (element == null)
+        {
+            element = getSpellElement(client.getVarbitValue(VarbitID.AUTOCAST_SPELL));
+        }
+
+        return element;
+    }
+
+    private int getPoweredStaffMaxHit()
+    {
+        ItemContainer equipment = client.getItemContainer(InventoryID.EQUIPMENT);
+        if (equipment == null)
         {
             return 0;
         }
 
-        // Simplified DPS: (Max Hit / 2) * Hit Chance / Attack Speed
-        // Average hit = Max Hit / 2 (assuming uniform distribution)
-        // Attack speed assumed to be ~2.4 seconds (average)
-        double averageHit = result.getMaxHit() / 2.0;
-        double dps = (averageHit * result.getHitChance()) / 2.4;
+        Item weapon = equipment.getItem(EquipmentInventorySlot.WEAPON.getSlotIdx());
+        if (weapon == null || weapon.getId() == -1)
+        {
+            return 0;
+        }
 
-        return Math.round(dps * 100.0) / 100.0; // Round to 2 decimals
+        return poweredStaffMaxHitResolver.resolveBaseMaxHit(
+                weapon.getId(),
+                client.getBoostedSkillLevel(Skill.MAGIC));
     }
+
+    private int getSpellMaxHit(int spellId)
+    {
+        switch (spellId)
+        {
+            case SPELL_WIND_STRIKE:
+                return 2;
+            case SPELL_WATER_STRIKE:
+                return 4;
+            case SPELL_EARTH_STRIKE:
+                return 6;
+            case SPELL_FIRE_STRIKE:
+                return 8;
+            case SPELL_WIND_BOLT:
+                return chaosGauntletsEquipped() ? 12 : 9;
+            case SPELL_WATER_BOLT:
+                return chaosGauntletsEquipped() ? 13 : 10;
+            case SPELL_EARTH_BOLT:
+                return chaosGauntletsEquipped() ? 14 : 11;
+            case SPELL_FIRE_BOLT:
+                return chaosGauntletsEquipped() ? 15 : 12;
+            case SPELL_WIND_BLAST:
+                return 13;
+            case SPELL_WATER_BLAST:
+                return 14;
+            case SPELL_EARTH_BLAST:
+                return 15;
+            case SPELL_FIRE_BLAST:
+                return 16;
+            case SPELL_WIND_WAVE:
+                return 17;
+            case SPELL_WATER_WAVE:
+                return 18;
+            case SPELL_EARTH_WAVE:
+                return 19;
+            case SPELL_FIRE_WAVE:
+                return 20;
+            case SPELL_WIND_SURGE:
+                return 21;
+            case SPELL_WATER_SURGE:
+                return 22;
+            case SPELL_EARTH_SURGE:
+                return 23;
+            case SPELL_FIRE_SURGE:
+                return 24;
+            default:
+                return 0;
+        }
+    }
+
+    private String getSpellElement(int spellId)
+    {
+        switch (spellId)
+        {
+            case SPELL_WIND_STRIKE:
+            case SPELL_WIND_BOLT:
+            case SPELL_WIND_BLAST:
+            case SPELL_WIND_WAVE:
+            case SPELL_WIND_SURGE:
+                return "air";
+            case SPELL_WATER_STRIKE:
+            case SPELL_WATER_BOLT:
+            case SPELL_WATER_BLAST:
+            case SPELL_WATER_WAVE:
+            case SPELL_WATER_SURGE:
+                return "water";
+            case SPELL_EARTH_STRIKE:
+            case SPELL_EARTH_BOLT:
+            case SPELL_EARTH_BLAST:
+            case SPELL_EARTH_WAVE:
+            case SPELL_EARTH_SURGE:
+                return "earth";
+            case SPELL_FIRE_STRIKE:
+            case SPELL_FIRE_BOLT:
+            case SPELL_FIRE_BLAST:
+            case SPELL_FIRE_WAVE:
+            case SPELL_FIRE_SURGE:
+                return "fire";
+            default:
+                return null;
+        }
+    }
+
+    private boolean chaosGauntletsEquipped()
+    {
+        ItemContainer equipment = client.getItemContainer(InventoryID.EQUIPMENT);
+        if (equipment == null)
+        {
+            return false;
+        }
+
+        Item gloves = equipment.getItem(EquipmentInventorySlot.GLOVES.getSlotIdx());
+        return gloves != null && gloves.getId() == ItemID.CHAOS_GAUNTLETS;
+    }
+
 }

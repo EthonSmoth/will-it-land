@@ -1,16 +1,20 @@
 
 package com.ethan.combatcalc;
-import javax.inject.Inject;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import javax.inject.Singleton;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Type;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
-import java.util.logging.Logger;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Loads and provides NPC defensive combat stats from the bundled JSON database.
@@ -34,7 +38,7 @@ import java.util.logging.Logger;
 public class NpcStatsRepository
 {
     private final Gson gson;
-    private static final Logger logger = Logger.getLogger(NpcStatsRepository.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(NpcStatsRepository.class);
     private static final String NPC_STATS_FILE = "/npc_stats.json";
 
     private Map<String, NpcCombatProfile> npcStats = new HashMap<>();
@@ -48,18 +52,33 @@ public class NpcStatsRepository
 
     private void loadNpcStats()
     {
-        try (InputStreamReader reader = new InputStreamReader(getClass().getResourceAsStream(NPC_STATS_FILE)))
+        InputStream resourceStream = getClass().getResourceAsStream(NPC_STATS_FILE);
+        if (resourceStream == null)
+        {
+            logger.warn("Failed to load NPC stats from jar: resource {} was not found", NPC_STATS_FILE);
+            npcStats = new HashMap<>();
+            return;
+        }
+
+        try (InputStreamReader reader = new InputStreamReader(resourceStream, StandardCharsets.UTF_8))
         {
             Type mapType = new TypeToken<Map<String, NpcCombatProfile>>() {}.getType();
-            npcStats = gson.fromJson(reader, mapType);
-            if (npcStats == null)
+            Map<String, NpcCombatProfile> loadedStats = gson.fromJson(reader, mapType);
+            if (loadedStats == null)
             {
                 npcStats = new HashMap<>();
+                return;
+            }
+
+            npcStats = new HashMap<>();
+            for (Map.Entry<String, NpcCombatProfile> entry : loadedStats.entrySet())
+            {
+                npcStats.put(normalizeNpcName(entry.getKey()), entry.getValue());
             }
         }
         catch (Exception e)
         {
-            logger.warning("Failed to load NPC stats from jar: " + e.getMessage());
+            logger.warn("Failed to load NPC stats from jar", e);
             npcStats = new HashMap<>();
         }
     }
@@ -74,25 +93,14 @@ public class NpcStatsRepository
             return new NpcCombatProfile();
         }
 
-        // Try exact match first
-        NpcCombatProfile profile = npcStats.get(npcName);
+        NpcCombatProfile profile = npcStats.get(normalizeNpcName(npcName));
         if (profile != null)
         {
             return profile;
         }
 
-        // Try case-insensitive match
-        for (Map.Entry<String, NpcCombatProfile> entry : npcStats.entrySet())
-        {
-            if (entry.getKey().equalsIgnoreCase(npcName))
-            {
-                return entry.getValue();
-            }
-        }
-
-        // Return empty profile if not found (will set unknown flag in plugin)
         NpcCombatProfile unknownProfile = new NpcCombatProfile(npcName);
-        logger.info("NPC profile not found for: " + npcName + ". Using default stats.");
+        logger.info("NPC profile not found for: {}. Using default stats.", npcName);
         return unknownProfile;
     }
 
@@ -101,7 +109,12 @@ public class NpcStatsRepository
      */
     public boolean hasNpcProfile(String npcName)
     {
-        return npcStats.containsKey(npcName);
+        if (npcName == null || npcName.isEmpty())
+        {
+            return false;
+        }
+
+        return npcStats.containsKey(normalizeNpcName(npcName));
     }
 
     /**
@@ -110,5 +123,10 @@ public class NpcStatsRepository
     public Map<String, NpcCombatProfile> getAllNpcProfiles()
     {
         return new HashMap<>(npcStats);
+    }
+
+    private String normalizeNpcName(String npcName)
+    {
+        return npcName.toLowerCase(Locale.ROOT).trim();
     }
 }

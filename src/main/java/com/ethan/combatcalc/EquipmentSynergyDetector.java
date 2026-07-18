@@ -54,10 +54,10 @@ public class EquipmentSynergyDetector
     {
         double multiplier = 1.0;
 
-        // Void Knight set: +10% accuracy (requires full set)
+        // Void Knight set: +10% melee/ranged accuracy, +45% magic accuracy.
         if (isWearingVoidSet(combatType))
         {
-            multiplier *= 1.10;
+            multiplier *= combatType == CombatType.MAGIC ? 1.45 : 1.10;
         }
 
         // Obsidian set: +10% melee accuracy (requires full set)
@@ -76,10 +76,17 @@ public class EquipmentSynergyDetector
     {
         double multiplier = 1.0;
 
-        // Void Knight set: +40% damage (requires full set)
+        // Void Knight damage only applies to melee and ranged.
         if (isWearingVoidSet(combatType))
         {
-            multiplier *= 1.40;
+            if (combatType == CombatType.MELEE)
+            {
+                multiplier *= 1.10;
+            }
+            else if (combatType == CombatType.RANGED)
+            {
+                multiplier *= isWearingEliteVoid() ? 1.125 : 1.10;
+            }
         }
 
         // Obsidian set: +10% damage (requires full set)
@@ -119,10 +126,10 @@ public class EquipmentSynergyDetector
         switch (combatType)
         {
             case MELEE:
-                validHelmet = helmetId == 11664; // Void melee helm
+                validHelmet = helmetId == 11665; // Void melee helm
                 break;
             case RANGED:
-                validHelmet = helmetId == 11665; // Void ranger helm
+                validHelmet = helmetId == 11664; // Void ranger helm
                 break;
             case MAGIC:
                 validHelmet = helmetId == 11663; // Void mage helm
@@ -139,6 +146,19 @@ public class EquipmentSynergyDetector
         boolean validLegs = legs != null && (legs.getId() == 8840 || legs.getId() == 13073);
         boolean validGloves = hands != null && hands.getId() == 8842;
         return validTop && validLegs && validGloves;
+    }
+
+    private boolean isWearingEliteVoid()
+    {
+        ItemContainer equipment = client.getItemContainer(InventoryID.EQUIPMENT);
+        if (equipment == null)
+        {
+            return false;
+        }
+
+        Item top = equipment.getItem(EquipmentInventorySlot.BODY.getSlotIdx());
+        Item legs = equipment.getItem(EquipmentInventorySlot.LEGS.getSlotIdx());
+        return top != null && legs != null && top.getId() == 13072 && legs.getId() == 13073;
     }
 
     /**

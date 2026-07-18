@@ -14,6 +14,7 @@ public class CombatResult
     private boolean npcUnknown; // Flag if NPC stats were not found in database
     private boolean debugMode; // Flag for debug display
     private String debugInfo; // Debug information string
+    private WeaponInfo weaponInfo;
 
     public CombatResult()
     {
@@ -24,6 +25,7 @@ public class CombatResult
         this.npcUnknown = false;
         this.debugMode = false;
         this.debugInfo = "";
+        this.weaponInfo = WeaponInfo.empty();
     }
 
     // Getters and Setters
@@ -117,11 +119,38 @@ public class CombatResult
         this.debugInfo = debugInfo;
     }
 
+    public WeaponInfo getWeaponInfo()
+    {
+        return weaponInfo;
+    }
+
+    public void setWeaponInfo(WeaponInfo weaponInfo)
+    {
+        this.weaponInfo = weaponInfo == null ? WeaponInfo.empty() : weaponInfo;
+    }
+
     /**
      * Format hit chance as a percentage string.
      */
     public String formatHitChance()
     {
         return String.format("%.1f%%", hitChance * 100.0);
+    }
+
+    public double getEstimatedDps()
+    {
+        if (maxHit <= 0 || hitChance <= 0)
+        {
+            return 0;
+        }
+
+        double attackSpeedSeconds = 2.4;
+        if (weaponInfo != null && weaponInfo.getSelectedAttackSpeedTicks() > 0)
+        {
+            attackSpeedSeconds = weaponInfo.getSelectedAttackSpeedTicks() * 0.6;
+        }
+
+        double dps = (maxHit / 2.0) * hitChance / attackSpeedSeconds;
+        return Math.round(dps * 100.0) / 100.0;
     }
 }
